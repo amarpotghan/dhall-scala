@@ -1,7 +1,7 @@
-import org.scalatest._
+import org.specs2._
 
-class HelloSpec extends FlatSpec with Matchers {
-  "Hello" should "have tests" in {
-    true should === (true)
-  }
+class HelloSpec extends Specification { def is = s2"""
+ First Test
+   AlwaysSuccess    $ok
+                    """
 }
