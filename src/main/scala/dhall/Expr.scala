@@ -116,7 +116,7 @@ sealed trait Expr[+S, +A] {
 }
 
 object Expr extends ExprInstances {
-  trait Const extends Expr[Nothing, Nothing]
+  sealed trait Const extends Expr[Nothing, Nothing]
   object Const {
    case object Type extends Const
    case object Kind extends Const
