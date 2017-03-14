@@ -123,19 +123,19 @@ object Expr extends ExprInstances {
   }
 
   case class Var(label: String, index: Int) extends Expr[Nothing, Nothing]
-  case class Lam[S, A](domainLabel: String, domain: Expr[S, A], body: Expr[S, A]) extends Expr[S, A]
-  case class Quant[S, A](domainLabel: String, domain: Expr[S, A], codomain: Expr[S, A]) extends Expr[S, A]
-  case class App[S, A](function: Expr[S, A], value: Expr[S, A]) extends Expr[S, A]
-  case class Let[S, A](label: String, typ: Option[Expr[S, A]], body: Expr[S, A]) extends Expr[S, A]
-  case class Annot[S, A](e1: Expr[S, A], e2: Expr[S, A]) extends Expr[S, A]
+  case class Lam[+S, +A](domainLabel: String, domain: Expr[S, A], body: Expr[S, A]) extends Expr[S, A]
+  case class Quant[+S, +A](domainLabel: String, domain: Expr[S, A], codomain: Expr[S, A]) extends Expr[S, A]
+  case class App[+S, +A](function: Expr[S, A], value: Expr[S, A]) extends Expr[S, A]
+  case class Let[+S, +A](label: String, typ: Option[Expr[S, A]], body: Expr[S, A]) extends Expr[S, A]
+  case class Annot[+S, +A](e1: Expr[S, A], e2: Expr[S, A]) extends Expr[S, A]
 
   case object BoolType extends Expr[Nothing, Nothing]
   case class BoolLit(value: Boolean) extends Expr[Nothing, Nothing]
-  case class BoolAnd[S, A](e1: Expr[S, A], e2: Expr[S, A]) extends Expr[S, A]
-  case class BoolOr[S, A](e1: Expr[S, A], e2: Expr[S, A]) extends Expr[S, A]
-  case class BoolEQ[S, A](e1: Expr[S, A], e2: Expr[S, A]) extends Expr[S, A]
-  case class BoolNE[S, A](e1: Expr[S, A], e2: Expr[S, A]) extends Expr[S, A]
-  case class BoolIf[S, A](ifPart: Expr[S, A], thenPart: Expr[S, A], elsePart: Expr[S, A]) extends Expr[S, A]
+  case class BoolAnd[+S, +A](e1: Expr[S, A], e2: Expr[S, A]) extends Expr[S, A]
+  case class BoolOr[+S, +A](e1: Expr[S, A], e2: Expr[S, A]) extends Expr[S, A]
+  case class BoolEQ[+S, +A](e1: Expr[S, A], e2: Expr[S, A]) extends Expr[S, A]
+  case class BoolNE[+S, +A](e1: Expr[S, A], e2: Expr[S, A]) extends Expr[S, A]
+  case class BoolIf[+S, +A](ifPart: Expr[S, A], thenPart: Expr[S, A], elsePart: Expr[S, A]) extends Expr[S, A]
 
   case object NaturalType extends Expr[Nothing, Nothing]
   //TODO: use correct Natural type instead of Int
@@ -145,8 +145,8 @@ object Expr extends ExprInstances {
   object NaturalIsZero extends Expr[Nothing, Nothing]
   object NaturalEven extends Expr[Nothing, Nothing]
   object NaturalOdd extends Expr[Nothing, Nothing]
-  case class NaturalPlus[S, A](e1: Expr[S, A], e2: Expr[S, A]) extends Expr[S, A]
-  case class NaturalTimes[S, A](e1: Expr[S, A], e2: Expr[S, A]) extends Expr[S, A]
+  case class NaturalPlus[+S, +A](e1: Expr[S, A], e2: Expr[S, A]) extends Expr[S, A]
+  case class NaturalTimes[+S, +A](e1: Expr[S, A], e2: Expr[S, A]) extends Expr[S, A]
 
   case object IntegerType extends Expr[Nothing, Nothing]
   case class IntegerLit(value: Int) extends Expr[Nothing, Nothing]
@@ -156,10 +156,10 @@ object Expr extends ExprInstances {
 
   object StringType extends Expr[Nothing, Nothing]
   case class StringLit(value: String) extends Expr[Nothing, Nothing]
-  case class StringAppend[S, A](e1: Expr[S, A], e2: Expr[S, A]) extends Expr[S, A]
+  case class StringAppend[+S, +A](e1: Expr[S, A], e2: Expr[S, A]) extends Expr[S, A]
 
   object ListType extends Expr[Nothing, Nothing]
-  case class ListLit[S, A](typeParam: Option[Expr[S, A]], value: Seq[Expr[S, A]]) extends Expr[S, A]
+  case class ListLit[+S, +A](typeParam: Option[Expr[S, A]], value: Seq[Expr[S, A]]) extends Expr[S, A]
   case object ListBuild extends Expr[Nothing, Nothing]
   case object ListFold extends Expr[Nothing, Nothing]
   case object ListLength extends Expr[Nothing, Nothing]
@@ -169,20 +169,20 @@ object Expr extends ExprInstances {
   case object ListReverse extends Expr[Nothing, Nothing]
 
   case object OptionalType extends Expr[Nothing, Nothing]
-  case class OptionalLit[S, A](typeParam: Expr[S, A], value: Seq[Expr[S, A]]) extends Expr[S, A]
+  case class OptionalLit[+S, +A](typeParam: Expr[S, A], value: Seq[Expr[S, A]]) extends Expr[S, A]
   case object OptionalFold extends Expr[Nothing, Nothing]
 
-  case class Record[S, A](mapping: Map[String, Expr[S, A]]) extends Expr[S, A]
-  case class RecordLit[S, A](mapping: Map[String, Expr[S, A]]) extends Expr[S, A]
+  case class Record[+S, +A](mapping: Map[String, Expr[S, A]]) extends Expr[S, A]
+  case class RecordLit[+S, +A](mapping: Map[String, Expr[S, A]]) extends Expr[S, A]
 
-  case class Union[S, A](mapping: Map[String, Expr[S, A]]) extends Expr[S, A]
-  case class UnionLit[S, A](t: String, e: Expr[S, A], m: Map[String, Expr[S, A]])
+  case class Union[+S, +A](mapping: Map[String, Expr[S, A]]) extends Expr[S, A]
+  case class UnionLit[+S, +A](t: String, e: Expr[S, A], m: Map[String, Expr[S, A]])
 
-  case class Combine[S, A](e1: Expr[S, A], e2: Expr[S, A]) extends Expr[S, A]
-  case class Merge[S, A](e1: Expr[S, A], e2: Expr[S, A], typ: Expr[S, A]) extends Expr[S, A]
-  case class Field[S, A](record: Expr[S, A], name: String) extends Expr[S, A]
-  case class Note[S, A](tag: S, e: Expr[S, A]) extends Expr[S, A]
-  case class Embed[A](a: A) extends Expr[Nothing, A]
+  case class Combine[+S, +A](e1: Expr[S, A], e2: Expr[S, A]) extends Expr[S, A]
+  case class Merge[+S, +A](e1: Expr[S, A], e2: Expr[S, A], typ: Expr[S, A]) extends Expr[S, A]
+  case class Field[+S, +A](record: Expr[S, A], name: String) extends Expr[S, A]
+  case class Note[+S, +A](tag: S, e: Expr[S, A]) extends Expr[S, A]
+  case class Embed[+A](a: A) extends Expr[Nothing, A]
 }
 
 private[dhall] sealed trait ExprInstances {
