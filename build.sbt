@@ -1,5 +1,8 @@
 name := """dhall"""
 version := "1.0"
 scalaVersion := "2.11.7"
-libraryDependencies += "org.specs2" %% "specs2-core" % "3.8.9" % "test"
-
+libraryDependencies ++= Seq(
+  "org.specs2" %% "specs2-core" % "3.8.9" % "test",
+  "org.typelevel" %% "cats" % "0.9.0",
+  compilerPlugin("org.spire-math" %% "kind-projector" % "0.9.3")
+)

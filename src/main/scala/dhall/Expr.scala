@@ -1,5 +1,8 @@
 package dhall
 
+import cats.Monad
+import cats.functor.Bifunctor
+
 sealed trait Expr[+S, +A] {
   import Expr._
 
@@ -112,9 +115,8 @@ sealed trait Expr[+S, +A] {
   }
 }
 
-object Expr {
+object Expr extends ExprInstances {
   trait Const extends Expr[Nothing, Nothing]
-
   object Const {
    case object Type extends Const
    case object Kind extends Const
@@ -136,7 +138,8 @@ object Expr {
   case class BoolIf[S, A](ifPart: Expr[S, A], thenPart: Expr[S, A], elsePart: Expr[S, A]) extends Expr[S, A]
 
   case object NaturalType extends Expr[Nothing, Nothing]
-  case class NaturalLit(p: Int) extends Expr[Nothing, Nothing]
+  //TODO: use correct Natural type instead of Int
+  case class NaturalLit(value: Int) extends Expr[Nothing, Nothing]
   object NaturalFold extends Expr[Nothing, Nothing]
   object NaturalBuild extends Expr[Nothing, Nothing]
   object NaturalIsZero extends Expr[Nothing, Nothing]
@@ -180,4 +183,27 @@ object Expr {
   case class Field[S, A](record: Expr[S, A], name: String) extends Expr[S, A]
   case class Note[S, A](tag: S, e: Expr[S, A]) extends Expr[S, A]
   case class Embed[A](a: A) extends Expr[Nothing, A]
+}
+
+private[dhall] sealed trait ExprInstances {
+  import Expr.Embed
+
+  implicit def exprMonad[S] = new Monad[Expr[S, ?]] {
+    override def map[A, B](fa: Expr[S, A])(f: A => B): Expr[S, B] =
+      fa.map(f)
+
+    def pure[A](x: A): Expr[S, A] = Embed(x)
+
+    def flatMap[A, B](fa: Expr[S, A])(f: A => Expr[S, B]): Expr[S, B] =
+      fa.flatMap(f)
+
+    // TODO: This is not correct, not tailrec.
+    def tailRecM[A, B](a: A)(f: A => Expr[S, Either[A, B]]): Expr[S, B] =
+      f(a).flatMap(_.fold(tailRecM(_)(f), pure))
+  }
+
+  implicit val exprBifunctor = new Bifunctor[Expr] {
+    def bimap[S, A, T, B](expr: Expr[S, A])(f: S => T, g: A => B): Expr[T, B] =
+      expr.map(g).leftMap(f)
+  }
 }
