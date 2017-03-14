@@ -182,7 +182,7 @@ object Expr extends ExprInstances {
   case class Merge[+S, +A](e1: Expr[S, A], e2: Expr[S, A], typ: Expr[S, A]) extends Expr[S, A]
   case class Field[+S, +A](record: Expr[S, A], name: String) extends Expr[S, A]
   case class Note[+S, +A](tag: S, e: Expr[S, A]) extends Expr[S, A]
-  case class Embed[+A](a: A) extends Expr[Nothing, A]
+  case class Embed[+A](value: A) extends Expr[Nothing, A]
 }
 
 private[dhall] sealed trait ExprInstances {
