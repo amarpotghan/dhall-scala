@@ -188,7 +188,7 @@ object Expr extends ExprInstances {
 private[dhall] sealed trait ExprInstances {
   import Expr.Embed
 
-  implicit def exprMonad[S] = new Monad[Expr[S, ?]] {
+  implicit def exprMonad[S] = new Monad[Partial2[Expr, S]#Apply] {
     override def map[A, B](fa: Expr[S, A])(f: A => B): Expr[S, B] =
       fa.map(f)
 
