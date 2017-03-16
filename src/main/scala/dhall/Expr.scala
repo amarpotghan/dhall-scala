@@ -2,6 +2,7 @@ package dhall
 
 import cats.Monad
 import cats.functor.Bifunctor
+import dhall.utilities.TypeLevelFunctions.Partial2
 
 sealed trait Expr[+S, +A] {
   import Expr._
