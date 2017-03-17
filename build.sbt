@@ -5,3 +5,7 @@ libraryDependencies ++= Seq(
   "org.specs2" %% "specs2-core" % "3.8.9" % "test",
   "org.typelevel" %% "cats" % "0.9.0"
 )
+
+scalacOptions ++= Seq(
+  "-language:higherKinds"
+)
