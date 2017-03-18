@@ -55,6 +55,7 @@ sealed trait Expr[+S, +A] {
     case Record(mapping) => Record(mapping map {case (k, v) => k -> v.leftMap(f)})
     case RecordLit(mapping) => RecordLit(mapping map {case (k, v) => k -> v.leftMap(f)})
     case Union(mapping) => Union(mapping map {case (k, v) => k -> v.leftMap(f)})
+    case UnionLit(label, expr, mapping) => UnionLit(label, expr.leftMap(f), mapping map {case (k, v) => k -> v.leftMap(f)})
     case Combine(e1, e2) => Combine(e1.leftMap(f), e2.leftMap(f))
     case Merge(e1, e2, typ) => Merge(e1.leftMap(f), e2.leftMap(f), typ.leftMap(f))
     case Field(record, name) => Field(record.leftMap(f), name)
@@ -108,6 +109,7 @@ sealed trait Expr[+S, +A] {
     case Record(mapping) => Record(mapping map {case (k, v) => k -> v.flatMap(f)})
     case RecordLit(mapping) => RecordLit(mapping map {case (k, v) => k -> v.flatMap(f)})
     case Union(mapping) => Union(mapping map {case (k, v) => k -> v.flatMap(f)})
+    case UnionLit(label, expr, mapping) => UnionLit(label, expr.flatMap(f), mapping map {case (k, v) => k -> v.flatMap(f)})
     case Combine(e1, e2) => Combine(e1.flatMap(f), e2.flatMap(f))
     case Merge(e1, e2, typ) => Merge(e1.flatMap(f), e2.flatMap(f), typ.flatMap(f))
     case Field(record, name) => Field(record.flatMap(f), name)
@@ -177,7 +179,7 @@ object Expr extends ExprInstances {
   case class RecordLit[+S, +A](mapping: Map[String, Expr[S, A]]) extends Expr[S, A]
 
   case class Union[+S, +A](mapping: Map[String, Expr[S, A]]) extends Expr[S, A]
-  case class UnionLit[+S, +A](t: String, e: Expr[S, A], m: Map[String, Expr[S, A]])
+  case class UnionLit[+S, +A](t: String, e: Expr[S, A], m: Map[String, Expr[S, A]]) extends Expr[S, A]
 
   case class Combine[+S, +A](e1: Expr[S, A], e2: Expr[S, A]) extends Expr[S, A]
   case class Merge[+S, +A](e1: Expr[S, A], e2: Expr[S, A], typ: Expr[S, A]) extends Expr[S, A]
