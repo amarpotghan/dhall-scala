@@ -15,7 +15,7 @@ sealed trait Expr[+S, +A] {
     case Lam(label, typ, body) => Lam(label, typ.leftMap(f), body.leftMap(f))
     case Quant(label, typ, body) => Quant(label, typ.leftMap(f), body.leftMap(f))
     case App(function, value) => App(function.leftMap(f), value.leftMap(f))
-    case Let(label, typ, body) => Let(label, typ.map(_.leftMap(f)), body.leftMap(f))
+    case Let(label, typ, expr, body) => Let(label, typ.map(_.leftMap(f)), expr.leftMap(f), body.leftMap(f))
     case Annot(e1, e2) => Annot(e1.leftMap(f), e2.leftMap(f))
     case BoolType => BoolType
     case boolLit: BoolLit => boolLit
@@ -69,7 +69,7 @@ sealed trait Expr[+S, +A] {
     case Lam(label, typ, body) => Lam(label, typ.flatMap(f), body.flatMap(f))
     case Quant(label, typ, body) => Quant(label, typ.flatMap(f), body.flatMap(f))
     case App(function, value) => App(function.flatMap(f), value.flatMap(f))
-    case Let(label, typ, body) => Let(label, typ.map(_.flatMap(f)), body.flatMap(f))
+    case Let(label, typ, expr, body) => Let(label, typ.map(_.flatMap(f)), expr.flatMap(f), body.flatMap(f))
     case Annot(e1, e2) => Annot(e1.flatMap(f), e2.flatMap(f))
     case BoolType => BoolType
     case boolLit: BoolLit => boolLit
@@ -129,7 +129,7 @@ object Expr extends ExprInstances {
   case class Lam[+S, +A](domainLabel: String, domain: Expr[S, A], body: Expr[S, A]) extends Expr[S, A]
   case class Quant[+S, +A](domainLabel: String, domain: Expr[S, A], codomain: Expr[S, A]) extends Expr[S, A]
   case class App[+S, +A](function: Expr[S, A], value: Expr[S, A]) extends Expr[S, A]
-  case class Let[+S, +A](label: String, typ: Option[Expr[S, A]], body: Expr[S, A]) extends Expr[S, A]
+  case class Let[+S, +A](label: String, typ: Option[Expr[S, A]], expr: Expr[S, A], body: Expr[S, A]) extends Expr[S, A]
   case class Annot[+S, +A](e1: Expr[S, A], e2: Expr[S, A]) extends Expr[S, A]
 
   case object BoolType extends Expr[Nothing, Nothing]
