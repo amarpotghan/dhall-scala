@@ -143,25 +143,25 @@ object Expr extends ExprInstances {
   case object NaturalType extends Expr[Nothing, Nothing]
   //TODO: use correct Natural type instead of Int
   case class NaturalLit(value: Int) extends Expr[Nothing, Nothing]
-  object NaturalFold extends Expr[Nothing, Nothing]
-  object NaturalBuild extends Expr[Nothing, Nothing]
-  object NaturalIsZero extends Expr[Nothing, Nothing]
-  object NaturalEven extends Expr[Nothing, Nothing]
-  object NaturalOdd extends Expr[Nothing, Nothing]
+  case object NaturalFold extends Expr[Nothing, Nothing]
+  case object NaturalBuild extends Expr[Nothing, Nothing]
+  case object NaturalIsZero extends Expr[Nothing, Nothing]
+  case object NaturalEven extends Expr[Nothing, Nothing]
+  case object NaturalOdd extends Expr[Nothing, Nothing]
   case class NaturalPlus[+S, +A](e1: Expr[S, A], e2: Expr[S, A]) extends Expr[S, A]
   case class NaturalTimes[+S, +A](e1: Expr[S, A], e2: Expr[S, A]) extends Expr[S, A]
 
   case object IntegerType extends Expr[Nothing, Nothing]
   case class IntegerLit(value: Int) extends Expr[Nothing, Nothing]
 
-  object DoubleType extends Expr[Nothing, Nothing]
+  case object DoubleType extends Expr[Nothing, Nothing]
   case class DoubleLit(value: Double) extends Expr[Nothing, Nothing]
 
-  object StringType extends Expr[Nothing, Nothing]
+  case object StringType extends Expr[Nothing, Nothing]
   case class StringLit(value: String) extends Expr[Nothing, Nothing]
   case class StringAppend[+S, +A](e1: Expr[S, A], e2: Expr[S, A]) extends Expr[S, A]
 
-  object ListType extends Expr[Nothing, Nothing]
+  case object ListType extends Expr[Nothing, Nothing]
   case class ListLit[+S, +A](typeParam: Option[Expr[S, A]], value: Seq[Expr[S, A]]) extends Expr[S, A]
   case object ListBuild extends Expr[Nothing, Nothing]
   case object ListFold extends Expr[Nothing, Nothing]
