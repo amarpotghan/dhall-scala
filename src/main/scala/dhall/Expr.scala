@@ -210,3 +210,84 @@ private[dhall] sealed trait ExprInstances {
       expr.map(g).leftMap(f)
   }
 }
+
+private[dhall] sealed trait ExprFunctions {
+  import Expr._
+
+  def shiftVariableIndices[S, T, A](by: Int, variable: Var, expr: Expr[S, A]): Expr[T, A] = {
+    def shift[X, Y, Z]: Expr[X, Z] => Expr[Y, Z] = shiftVariableIndices(by, variable, _)
+    expr match {
+      case constant: Const => constant
+      case Var(name, currentIndex) => {
+        val newIndex = if(name == variable.label && currentIndex <= variable.index) currentIndex + by else currentIndex
+        Var(name, newIndex)
+      }
+      case Lam(domainName, typeExpr, bodyExpr) => {
+        val adjustedIndex = if(domainName == variable.label) variable.index + 1 else variable.index
+        val shiftedTypeExpr = shift(typeExpr)
+        val shiftedBodyExpr = shiftVariableIndices(by, variable.copy(index = adjustedIndex), bodyExpr)
+        Lam(domainName, shiftedTypeExpr, shiftedBodyExpr)
+      }
+      case Quant(domainName, typeExpr, bodyExpr) => {
+        val adjustedIndex = if(domainName == variable.label) variable.index + 1 else variable.index
+        val shiftedTypeExpr = shift(typeExpr)
+        val shiftedBodyExpr = shiftVariableIndices(by, variable.copy(index = adjustedIndex), bodyExpr)
+        Quant(domainName, shiftedTypeExpr, shiftedBodyExpr)
+      }
+      case App(function, value) => App(shift(function), shift(value))
+      case Let(label, typExprOpt, expr, bodyExpr) => {
+        val adjustedIndex = if(label == variable.label) variable.index + 1 else variable.index
+        val shiftedTypeExpr = typExprOpt.map(shift)
+        val shiftedValueExpr = shift(expr)
+        val shiftedBodyExpr = shiftVariableIndices(by, variable.copy(index = adjustedIndex), bodyExpr)
+        Let(label, shiftedTypeExpr, shiftedValueExpr, shiftedBodyExpr)
+      }
+      case Annot(value, typ) => Annot(shift(value), shift(typ))
+      case BoolType => BoolType
+      case boolLit: BoolLit => boolLit
+      case BoolAnd(e1, e2) => BoolAnd(shift(e1), shift(e2))
+      case BoolOr(e1, e2) => BoolOr(shift(e1), shift(e2))
+      case BoolEQ(e1, e2) => BoolEQ(shift(e1), shift(e2))
+      case BoolNE(e1, e2) => BoolNE(shift(e1), shift(e2))
+      case BoolIf(e1, e2, e3) => BoolIf(shift(e1), shift(e2), shift(e3))
+      case NaturalType => NaturalType
+      case naturalLit: NaturalLit => naturalLit
+      case NaturalFold => NaturalFold
+      case NaturalBuild => NaturalBuild
+      case NaturalIsZero => NaturalIsZero
+      case NaturalEven => NaturalEven
+      case NaturalOdd => NaturalOdd
+      case NaturalPlus(e1, e2) => NaturalPlus(shift(e1), shift(e2))
+      case NaturalTimes(e1, e2) => NaturalTimes(shift(e1), shift(e2))
+      case IntegerType => IntegerType
+      case integer: IntegerLit => integer
+      case DoubleType => DoubleType
+      case double: DoubleLit => double
+      case StringType => StringType
+      case string: StringLit => string
+      case StringAppend(s1, s2) => StringAppend(shift(s1), shift(s2))
+      case ListType => ListType
+      case ListLit(typExprOpt, ls) => ListLit(typExprOpt.map(shift), ls.map(shift))
+      case ListBuild => ListBuild
+      case ListFold => ListFold
+      case ListLength => ListLength
+      case ListHead => ListHead
+      case ListLast => ListLast
+      case ListIndexed => ListIndexed
+      case ListReverse => ListReverse
+      case OptionalType => OptionalType
+      case OptionalFold => OptionalFold
+      case OptionalLit(typeParam, values) => OptionalLit(shift(typeParam), values.map(shift))
+      case Record(mapping) => Record(mapping map {case (k, v) => k -> shift(v)})
+      case RecordLit(mapping) => RecordLit(mapping map {case (k, v) => k -> shift(v)})
+      case Union(mapping) => Union(mapping map {case (k, v) => k -> shift(v)})
+      case UnionLit(label, expr, mapping) => UnionLit(label, shift(expr), mapping map {case (k, v) => k -> shift(expr)})
+      case Combine(e1, e2) => Combine(shift(e1), shift(e2))
+      case Merge(e1, e2, typ) => Merge(shift(e1), shift(e2), shift(typ))
+      case Field(record, name) => Field(shift(record), name)
+      case Note(_, e) => shift(e)
+      case Embed(embedded) => Embed(embedded)
+    }
+
+  }
+}
