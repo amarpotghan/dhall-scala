@@ -290,4 +290,66 @@ private[dhall] sealed trait ExprFunctions {
     }
 
   }
+
+  def substitute[S, T, A](variable: Var, which: Expr[S, A], in: Expr[T, A]): Expr[S, A] = {
+    def subst[T]: Expr[T, A] => Expr[S, A] = substitute(variable, which, _)
+    def withShift(label: String, expr: Expr[T, A]): Expr[S, A] = {
+      val shifted = if(variable.label == label) variable.index + 1 else variable.index
+      substitute(variable.copy(index = shifted), shiftVariableIndices(1, Var(label, 0), which), expr)
+    }
+
+    in match {
+      case const: Const => const
+      case Lam(label, typExpr, bodyExpr) => Lam(label, subst(typExpr), withShift(label, bodyExpr))
+      case Quant(label, typeExpr, bodyExpr) => Quant(label, subst(typeExpr), withShift(label, bodyExpr))
+      case App(function, value) => App(subst(function), subst(value))
+      case Let(label, typExprOpt, valueExpr, bodyExpr) => Let(label, typExprOpt.map(subst), subst(valueExpr), withShift(label, bodyExpr))
+      case v: Var => if(v == variable) by else v
+      case Annot(e1, e2) => Annot(subst(e1), subst(e2))
+      case BoolType => BoolType
+      case boolLit: BoolLit => boolLit
+      case BoolAnd(e1, e2) => BoolAnd(subst(e1), subst(e2))
+      case BoolOr(e1, e2) => BoolOr(subst(e1), subst(e2))
+      case BoolEQ(e1, e2) => BoolEQ(subst(e1), subst(e2))
+      case BoolNE(e1, e2) => BoolNE(subst(e1), subst(e2))
+      case BoolIf(ifPart, thenPart, elsePart) => BoolIf(subst(ifPart), subst(thenPart), subst(elsePart))
+      case NaturalType => NaturalType
+      case NaturalLit(n) => NaturalLit(n)
+      case NaturalFold => NaturalFold
+      case NaturalBuild => NaturalBuild
+      case NaturalIsZero => NaturalIsZero
+      case NaturalEven => NaturalEven
+      case NaturalOdd => NaturalOdd
+      case NaturalPlus(e1, e2) => NaturalPlus(subst(e1), subst(e2))
+      case NaturalTimes(e1, e2) => NaturalTimes(subst(e1), subst(e2))
+      case IntegerType => IntegerType
+      case integer: IntegerLit => integer
+      case DoubleType => DoubleType
+      case double: DoubleLit => double
+      case StringType => StringType
+      case string: StringLit => string
+      case StringAppend(s1, s2) => StringAppend(subst(s1), subst(s2))
+      case ListType => ListType
+      case ListLit(typ, values) => ListLit(typ.map(subst), values.map(subst))
+      case ListBuild => ListBuild
+      case ListFold => ListFold
+      case ListLength => ListLength
+      case ListHead => ListHead
+      case ListLast => ListLast
+      case ListReverse => ListReverse
+      case ListIndexed => ListIndexed
+      case OptionalType => OptionalType
+      case OptionalLit(typ, values) => OptionalLit(subst(typ), values.map(subst))
+      case OptionalFold => OptionalFold
+      case Record(mapping) => Record(mapping map {case (k, v) => k -> subst(v)})
+      case RecordLit(mapping) => RecordLit(mapping map {case (k, v) => k -> subst(v)})
+      case Union(mapping) => Union(mapping map {case (k, v) => k -> subst(v)})
+      case UnionLit(label, expr, mapping) => UnionLit(label, subst(expr), mapping map {case (k, v) => k -> subst(v)})
+      case Combine(e1, e2) => Combine(subst(e1), subst(e2))
+      case Merge(e1, e2, e3) => Merge(subst(e1), subst(e2), subst(e3))
+      case Field(record, name) => Field(subst(record), name)
+      case Note(_, expr) => subst(expr)
+      case Embed(value) => Embed(value)
+    }
+  }
 }
