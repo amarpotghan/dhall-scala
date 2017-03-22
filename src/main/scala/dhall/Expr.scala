@@ -242,7 +242,115 @@ sealed trait Expr[+S, +A] {
       case Embed(value) => Embed(value)
     }
   }
+
+  def normalize[T]: Expr[T, A] = {
+    this match {
+      case const: Const => const
+      case variable: Var => variable
+      case Lam(label, typExpr, bodyExpr) => Lam(label, typExpr.normalize, bodyExpr.normalize)
+      case Quant(label, domain, codomain) => Quant(label, domain.normalize, codomain.normalize)
+      case App(function, value) => App(function.normalize, value.normalize)
+      case Let(binding, _, expr, body) => body.substitute(Var(binding, 0), expr.shiftVariableIndices(1, Var(binding, 0))).shiftVariableIndices(-1, Var(binding, 0))
+      case Annot(e1, _) => e1.normalize
+      case BoolType => BoolType
+      case BoolLit(b) => BoolLit(b)
+      case BoolAnd(e1, e2) => (e1.normalize, e2.normalize) match {
+        case (BoolLit(l1), BoolLit(l2)) => BoolLit(l1 && l2)
+        case (x, y) => BoolAnd(x, y)
+      }
+      case BoolOr(e1, e2) => (e1.normalize, e2.normalize) match {
+        case (BoolLit(l1), BoolLit(l2)) => BoolLit(l1 || l2)
+        case (x, y) => BoolOr(x, y)
+      }
+      case BoolEQ(e1, e2) => (e1.normalize, e2.normalize) match {
+        case (BoolLit(l1), BoolLit(l2)) => BoolLit(l1 == l2)
+        case (x, y) => BoolEQ(x, y)
+      }
+      case BoolNE(e1, e2) => (e1.normalize, e2.normalize) match {
+        case (BoolLit(l1), BoolLit(l2)) => BoolLit(l1 != l2)
+        case (x, y) => BoolNE(x, y)
+      }
+      case BoolIf(ifExpr, thenExpr, elseExpr) => ifExpr.normalize match {
+        case BoolLit(l) => if(l) thenExpr.normalize else elseExpr.normalize
+        case other => BoolIf(other, thenExpr.normalize, elseExpr.normalize)
+      }
+      case NaturalType => NaturalType
+      case NaturalLit(x) => NaturalLit(x)
+      case NaturalFold => NaturalFold
+      case NaturalBuild => NaturalBuild
+      case NaturalIsZero => NaturalIsZero
+      case NaturalEven => NaturalEven
+      case NaturalOdd => NaturalOdd
+      case NaturalPlus(e1, e2) => (e1.normalize, e2.normalize) match {
+        case (NaturalLit(n1), NaturalLit(n2)) => NaturalLit(n1 + n2)
+        case (x, y) => NaturalPlus(x, y)
+      }
+      case NaturalTimes(e1, e2) => (e1.normalize, e2.normalize) match {
+        case (NaturalLit(n1), NaturalLit(n2)) => NaturalLit(n1 * n2)
+        case (x, y) => NaturalTimes(x, y)
+      }
+      case IntegerType => IntegerType
+      case IntegerLit(n) => IntegerLit(n)
+      case DoubleType => DoubleType
+      case DoubleLit(n) => DoubleLit(n)
+      case StringType => StringType
+      case StringLit(s) => StringLit(s)
+      case StringAppend(e1, e2) => (e1.normalize, e2.normalize) match {
+        case (StringLit(s1), StringLit(s2)) => StringLit(s1 ++ s2)
+        case (x, y) => StringAppend(x, y)
+      }
+      case ListType => ListType
+      case ListLit(typ, ls) => ListLit(typ.map(_.normalize), ls.map(_.normalize))
+      case ListBuild => ListBuild
+      case ListFold => ListFold
+      case ListLength => ListLength
+      case ListHead => ListHead
+      case ListLast => ListLast
+      case ListIndexed => ListIndexed
+      case ListReverse => ListReverse
+      case OptionalType => OptionalType
+      case OptionalLit(t, es) => OptionalLit(t.normalize, es.map(_.normalize))
+      case OptionalFold => OptionalFold
+      case Record(mapping) => Record(mapping.map {case (k, v) => k -> v.normalize})
+      case RecordLit(mapping) => RecordLit(mapping.map {case (k, v) => k -> v.normalize})
+      case Union(mapping) => Union(mapping.map {case (k, v) => k -> v.normalize})
+      case UnionLit(label, e, mapping) => UnionLit(label, e.normalize, mapping.map {case (k, v) => k -> v.normalize})
+      case Combine(e1, e2) => {
+        // TODO: extract util function
+        def combineMaps(first: Map[String, Expr[S, A]], second: Map[String, Expr[S, A]]): Map[String, Expr[T, A]] = {
+          val commonKeys = first.keySet intersect second.keySet
+          val combinedKeyValues = commonKeys.map(k => k -> combine(first(k), second(k))).toMap
+          val otherThanCommon = first.filterKeys(!commonKeys.contains(_)) ++ second.filterKeys(!commonKeys.contains(_))
+          //test
+          combinedKeyValues ++ (otherThanCommon.map {case (k, v) => k -> v.normalize})
+        }
+        def combine(e1: Expr[S, A], e2: Expr[S, A]): Expr[T, A] = (e1.normalize, e2.normalize) match {
+          case (RecordLit(mapping1), RecordLit(mapping2)) => RecordLit(combineMaps(mapping1, mapping2).map {case (k, v) => k -> v.normalize})
+          case (x, y) => Combine(x, y)
+        }
+
+        combine(e1, e2)
+      }
+      case Merge(e1, e2, e3) => {
+        val e1Normalized = e1.normalize
+        val e2Normalized = e2.normalize
+        (e1Normalized, e2Normalized) match {
+          case (RecordLit(mapping), UnionLit(ks, vs, _)) => {
+            mapping.get(ks).fold[Expr[T, A]](Merge(e1Normalized, e2Normalized, e3.normalize))(_.normalize)
+          }
+          case (x, y) => Merge(x, y, e3.normalize)
+        }
+      }
+      case Field(record, name) => record.normalize match {
+        case RecordLit(fields) => fields.get(name).fold[Expr[T, A]](Field(RecordLit(fields.map {case (k, v) => k -> v.normalize}), name))(_.normalize)
+        case other => Field(other, name)
+      }
+      case Note(_, expr) => expr.normalize
+      case Embed(a) => Embed(a)
+    }
+  }
 }
+
 
 object Expr extends ExprInstances {
   sealed trait Const extends Expr[Nothing, Nothing]
