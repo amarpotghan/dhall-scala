@@ -194,7 +194,7 @@ sealed trait Expr[+S, +A] {
       case Quant(label, typeExpr, bodyExpr) => Quant(label, subst(typeExpr), withShift(label, bodyExpr))
       case App(function, value) => App(subst(function), subst(value))
       case Let(label, typExprOpt, valueExpr, bodyExpr) => Let(label, typExprOpt.map(subst), subst(valueExpr), withShift(label, bodyExpr))
-      case v: Var => if(v.label == variable.label) by else v
+      case v: Var => if(v == variable) by else v
       case Annot(e1, e2) => Annot(subst(e1), subst(e2))
       case BoolType => BoolType
       case boolLit: BoolLit => boolLit
