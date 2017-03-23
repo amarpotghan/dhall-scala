@@ -3,10 +3,10 @@ package dhall
 import cats.Monad
 import cats.functor.Bifunctor
 import dhall.utilities.TypeLevelFunctions.Partial2
+import dhall.utilities.MapFunctions.RichMap
 
 sealed trait Expr[+S, +A] {
   import Expr._
-
   def map[B](f: A => B): Expr[S, B] = flatMap(a => Embed(f(a)))
   def ap[SS >: S, B](f: Expr[SS, A => B]): Expr[SS, B] = f.flatMap(map)
   def leftMap[T](f: S => T): Expr[T, A] = this match {
@@ -52,10 +52,10 @@ sealed trait Expr[+S, +A] {
     case OptionalType => OptionalType
     case OptionalLit(typeParam, value) => OptionalLit(typeParam.leftMap(f), value.map(_.leftMap(f)))
     case OptionalFold => OptionalFold
-    case Record(mapping) => Record(mapping map {case (k, v) => k -> v.leftMap(f)})
-    case RecordLit(mapping) => RecordLit(mapping map {case (k, v) => k -> v.leftMap(f)})
-    case Union(mapping) => Union(mapping map {case (k, v) => k -> v.leftMap(f)})
-    case UnionLit(label, expr, mapping) => UnionLit(label, expr.leftMap(f), mapping map {case (k, v) => k -> v.leftMap(f)})
+    case Record(mapping) => Record(mapping.mapValue(_.leftMap(f)))
+    case RecordLit(mapping) => RecordLit(mapping.mapValue(_.leftMap(f)))
+    case Union(mapping) => Union(mapping.mapValue(_.leftMap(f)))
+    case UnionLit(label, expr, mapping) => UnionLit(label, expr.leftMap(f), mapping.mapValue(_.leftMap(f)))
     case Combine(e1, e2) => Combine(e1.leftMap(f), e2.leftMap(f))
     case Merge(e1, e2, typ) => Merge(e1.leftMap(f), e2.leftMap(f), typ.leftMap(f))
     case Field(record, name) => Field(record.leftMap(f), name)
@@ -106,10 +106,10 @@ sealed trait Expr[+S, +A] {
     case OptionalType => OptionalType
     case OptionalLit(typeParam, value) => OptionalLit(typeParam.flatMap(f), value.map(_.flatMap(f)))
     case OptionalFold => OptionalFold
-    case Record(mapping) => Record(mapping map {case (k, v) => k -> v.flatMap(f)})
-    case RecordLit(mapping) => RecordLit(mapping map {case (k, v) => k -> v.flatMap(f)})
-    case Union(mapping) => Union(mapping map {case (k, v) => k -> v.flatMap(f)})
-    case UnionLit(label, expr, mapping) => UnionLit(label, expr.flatMap(f), mapping map {case (k, v) => k -> v.flatMap(f)})
+    case Record(mapping) => Record(mapping.mapValue(_.flatMap(f)))
+    case RecordLit(mapping) => RecordLit(mapping.mapValue(_.flatMap(f)))
+    case Union(mapping) => Union(mapping.mapValue(_.flatMap(f)))
+    case UnionLit(label, expr, mapping) => UnionLit(label, expr.flatMap(f), mapping.mapValue(_.flatMap(f)))
     case Combine(e1, e2) => Combine(e1.flatMap(f), e2.flatMap(f))
     case Merge(e1, e2, typ) => Merge(e1.flatMap(f), e2.flatMap(f), typ.flatMap(f))
     case Field(record, name) => Field(record.flatMap(f), name)
@@ -169,10 +169,10 @@ sealed trait Expr[+S, +A] {
       case OptionalType => OptionalType
       case OptionalFold => OptionalFold
       case OptionalLit(typeParam, values) => OptionalLit(shift(typeParam), values.map(shift))
-      case Record(mapping) => Record(mapping map {case (k, v) => k -> shift(v)})
-      case RecordLit(mapping) => RecordLit(mapping map {case (k, v) => k -> shift(v)})
-      case Union(mapping) => Union(mapping map {case (k, v) => k -> shift(v)})
-      case UnionLit(label, expr, mapping) => UnionLit(label, shift(expr), mapping map {case (k, v) => k -> shift(expr)})
+      case Record(mapping) => Record(mapping.mapValue(shift))
+      case RecordLit(mapping) => RecordLit(mapping.mapValue(shift))
+      case Union(mapping) => Union(mapping.mapValue(shift))
+      case UnionLit(label, expr, mapping) => UnionLit(label, shift(expr), mapping.mapValue(shift))
       case Combine(e1, e2) => Combine(shift(e1), shift(e2))
       case Merge(e1, e2, typ) => Merge(shift(e1), shift(e2), shift(typ))
       case Field(record, name) => Field(shift(record), name)
@@ -231,10 +231,10 @@ sealed trait Expr[+S, +A] {
       case OptionalType => OptionalType
       case OptionalLit(typ, values) => OptionalLit(subst(typ), values.map(subst))
       case OptionalFold => OptionalFold
-      case Record(mapping) => Record(mapping map {case (k, v) => k -> subst(v)})
-      case RecordLit(mapping) => RecordLit(mapping map {case (k, v) => k -> subst(v)})
-      case Union(mapping) => Union(mapping map {case (k, v) => k -> subst(v)})
-      case UnionLit(label, expr, mapping) => UnionLit(label, subst(expr), mapping map {case (k, v) => k -> subst(v)})
+      case Record(mapping) => Record(mapping.mapValue(subst))
+      case RecordLit(mapping) => RecordLit(mapping.mapValue(subst))
+      case Union(mapping) => Union(mapping.mapValue(subst))
+      case UnionLit(label, expr, mapping) => UnionLit(label, subst(expr), mapping.mapValue(subst))
       case Combine(e1, e2) => Combine(subst(e1), subst(e2))
       case Merge(e1, e2, e3) => Merge(subst(e1), subst(e2), subst(e3))
       case Field(record, name) => Field(subst(record), name)
@@ -311,25 +311,16 @@ sealed trait Expr[+S, +A] {
       case OptionalType => OptionalType
       case OptionalLit(t, es) => OptionalLit(t.normalize, es.map(_.normalize))
       case OptionalFold => OptionalFold
-      case Record(mapping) => Record(mapping.map {case (k, v) => k -> v.normalize})
-      case RecordLit(mapping) => RecordLit(mapping.map {case (k, v) => k -> v.normalize})
-      case Union(mapping) => Union(mapping.map {case (k, v) => k -> v.normalize})
-      case UnionLit(label, e, mapping) => UnionLit(label, e.normalize, mapping.map {case (k, v) => k -> v.normalize})
+      case Record(mapping) => Record(mapping.mapValue(_.normalize))
+      case RecordLit(mapping) => RecordLit(mapping.mapValue(_.normalize))
+      case Union(mapping) => Union(mapping.mapValue(_.normalize))
+      case UnionLit(label, e, mapping) => UnionLit(label, e.normalize, mapping.mapValue(_.normalize))
       case Combine(e1, e2) => {
-        // TODO: extract util function
-        def combineMaps(first: Map[String, Expr[S, A]], second: Map[String, Expr[S, A]]): Map[String, Expr[T, A]] = {
-          val commonKeys = first.keySet intersect second.keySet
-          val combinedKeyValues = commonKeys.map(k => k -> combine(first(k), second(k))).toMap
-          val otherThanCommon = first.filterKeys(!commonKeys.contains(_)) ++ second.filterKeys(!commonKeys.contains(_))
-          //test
-          combinedKeyValues ++ (otherThanCommon.map {case (k, v) => k -> v.normalize})
-        }
-        def combine(e1: Expr[S, A], e2: Expr[S, A]): Expr[T, A] = (e1.normalize, e2.normalize) match {
-          case (RecordLit(mapping1), RecordLit(mapping2)) => RecordLit(combineMaps(mapping1, mapping2).map {case (k, v) => k -> v.normalize})
+        def combine(e1: Expr[T, A], e2: Expr[T, A]): Expr[T, A] = (e1, e2) match {
+          case (RecordLit(mapping1), RecordLit(mapping2)) => RecordLit(mapping1.unionWith(combine(_, _), mapping2).mapValue(_.normalize))
           case (x, y) => Combine(x, y)
         }
-
-        combine(e1, e2)
+        combine(e1.normalize, e2.normalize)
       }
       case Merge(e1, e2, e3) => {
         val e1Normalized = e1.normalize
@@ -342,7 +333,7 @@ sealed trait Expr[+S, +A] {
         }
       }
       case Field(record, name) => record.normalize match {
-        case RecordLit(fields) => fields.get(name).fold[Expr[T, A]](Field(RecordLit(fields.map {case (k, v) => k -> v.normalize}), name))(_.normalize)
+        case RecordLit(fields) => fields.get(name).fold[Expr[T, A]](Field(RecordLit(fields.mapValue(_.normalize)), name))(_.normalize)
         case other => Field(other, name)
       }
       case Note(_, expr) => expr.normalize
