@@ -2,6 +2,8 @@ package dhall
 
 import cats.Monad
 import cats.functor.Bifunctor
+import scala.util.Try
+
 import dhall.utilities.TypeLevelFunctions.Partial2
 import dhall.utilities.MapFunctions.RichMap
 
@@ -117,6 +119,7 @@ sealed trait Expr[+S, +A] {
     case Embed(a) => f(a)
   }
 
+  // N.B. - This method is not stack safe
   def shiftVariableIndices[T](by: Int, variable: Var): Expr[T, A] = {
     def shift[X, Y, Z]: Expr[X, Z] => Expr[Y, Z] = _.shiftVariableIndices(by, variable)
     def withAdjustedIndex(label: String, expr: Expr[S, A]): Expr[T, A] = {
@@ -181,6 +184,7 @@ sealed trait Expr[+S, +A] {
     }
   }
 
+  // N.B. - This method is not stack safe
   def substitute[T, AA >: A](variable: Var, by: Expr[T, AA]): Expr[T, AA] = {
     def subst: Expr[S, AA] => Expr[T, AA] = _.substitute(variable, by)
     def withShift(label: String, expr: Expr[S, AA]): Expr[T, AA] = {
@@ -243,14 +247,65 @@ sealed trait Expr[+S, +A] {
     }
   }
 
+  // N.B. - This method is not stack safe
   def normalize[T]: Expr[T, A] = {
     this match {
       case const: Const => const
       case variable: Var => variable
       case Lam(label, typExpr, bodyExpr) => Lam(label, typExpr.normalize, bodyExpr.normalize)
       case Quant(label, domain, codomain) => Quant(label, domain.normalize, codomain.normalize)
-      case App(function, value) => App(function.normalize, value.normalize)
-      case Let(binding, _, expr, body) => body.substitute(Var(binding, 0), expr.shiftVariableIndices(1, Var(binding, 0))).shiftVariableIndices(-1, Var(binding, 0))
+      case App(function, arg) => {
+        function.normalize match {
+          // normalize ((\x -> f x) a) => normalize (f a)
+          case Lam(label, typExpr, bodyExpr) => bodyExpr.substitute(Var(label, 0), arg.shiftVariableIndices(1, Var(label, 0))).shiftVariableIndices(-1, Var(label, 0)).normalize
+          case normalizedFunction => (normalizedFunction, arg.normalize) match {
+            // normalize (List/build t ((List/fold t) e)) = normalize e
+            case (App(ListBuild, _), App(App(ListFold, _), argument)) => argument.normalize
+            case (App(ListFold, _), App(App(ListBuild, _), argument)) => argument.normalize
+            case (NaturalBuild, App(NaturalFold, argument)) => argument.normalize
+            case (NaturalFold, App(NaturalBuild, argument)) => argument.normalize
+            // Natural/fold 2 Natural (+15) 1 = (15 + (15 + 1)) = 31
+            case (App(App(App(NaturalFold, (NaturalLit(n))), t), f), empty) => (1 to n).foldRight(empty)((_, acc) => App(f, acc)).normalize
+            case (NaturalBuild, v) => {
+              val withLabels = App(App(App(v, NaturalType), Var("Succ", 0)), Var("Zero", 0))
+              def normalized(e: Expr[S, A]): Boolean = Try(result(0, e)).toOption.fold[Boolean](false)(_ => true)
+              def result(n: Int, e: Expr[S, A]): Int = e match {
+                case App(Var("Succ", _), next) => result(n + 1, next)
+                case Var("Zero", _) => n
+                case _ => throw CompilerBug.NormalizerBug(s"${this.toString}.normalize")
+              }
+              if(normalized(withLabels)) NaturalLit(result(0, withLabels)) else App(normalizedFunction, v)
+            }
+            case (NaturalIsZero, (NaturalLit(n))) => BoolLit(n == 0)
+            case (NaturalEven, (NaturalLit(n))) => BoolLit(n % 2 == 0)
+            case (NaturalOdd, (NaturalLit(n))) => BoolLit(n % 2 != 0)
+            case ((App(ListBuild, t), v)) => {
+              // We first label the church encoded list using "Cons" and "Nil" variables
+              val withLabels = App(App(App(v, App(ListType, t)), Var("Cons", 0)), Var("Nil", 0)).normalize
+              def normalized(e: Expr[S, A]): Boolean = Try(result(Nil, e)).toOption.fold[Boolean](false)(_ => true)
+              // we fold over the labeled church encoded list and create a Scala List
+              def result[Tag, V](acc: List[Expr[Tag, V]], e: Expr[Tag, V]): List[Expr[Tag, V]] = e match {
+                case App(App(Var("Succ", _), h), next) => result(h :: acc, next)
+                case Var("Zero", _) => acc
+                case _ => throw CompilerBug.NormalizerBug(s"${this.toString}.normalize")
+              }
+              if(normalized(withLabels)) ListLit(Some(t), result(Nil, withLabels)) else App(normalizedFunction, v)
+            }
+            case (App(App(App(ListFold, t), ListLit(_, ls)), f), seed) => ls.foldRight(seed)((e, acc) => App(App(f, e), acc)).normalize
+            case (App(ListLength, _), ListLit(_, ls)) => NaturalLit(ls.size)
+            case (App(ListHead, t), ListLit(_, ls)) => OptionalLit(t, ls.headOption.toList).normalize
+            case (App(ListLast, t), ListLit(_, ls)) => OptionalLit(t, ls.lastOption.toList).normalize
+            case (App(ListIndexed, t), ListLit(_, ls)) => {
+              val typ = Record(Map("index" -> NaturalType, "value" -> t))
+              ListLit(Some(typ), ls.zipWithIndex.map{ case (v, i) => RecordLit(Map("index" -> NaturalLit(i), "value" -> v))}).normalize
+            }
+            case (App(ListReverse, t), ListLit(_, ls)) => ListLit(Some(t), ls.reverse).normalize
+            case (App(App(App(App(OptionalFold, t), OptionalLit(_, ls)), _), some), none) => ls.headOption.fold(none)(App(some, _)).normalize
+            case (n, v) => App(n, v)
+          }
+        }
+      }
+      case Let(binding, _, expr, body) => body.substitute(Var(binding, 0), expr.shiftVariableIndices(1, Var(binding, 0))).shiftVariableIndices(-1, Var(binding, 0)).normalize
       case Annot(e1, _) => e1.normalize
       case BoolType => BoolType
       case BoolLit(b) => BoolLit(b)
@@ -411,6 +466,12 @@ object Expr extends ExprInstances {
   case class Field[+S, +A](record: Expr[S, A], name: String) extends Expr[S, A]
   case class Note[+S, +A](tag: S, e: Expr[S, A]) extends Expr[S, A]
   case class Embed[+A](value: A) extends Expr[Nothing, A]
+
+  // TODO: Improve error message
+  sealed abstract class CompilerBug(msg: String) extends RuntimeException(msg)
+  object CompilerBug {
+    case class NormalizerBug(msg: String) extends CompilerBug(s"Bug in compiler, this should never happen. Please report. Message: $msg")
+  }
 }
 
 private[dhall] sealed trait ExprInstances {
