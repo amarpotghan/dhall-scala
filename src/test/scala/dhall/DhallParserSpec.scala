@@ -26,5 +26,25 @@ class DhallParserSpec extends Specification with Matchers {
         DhallParser.parse(expression).get must equalTo(Expr.Embed(Url("https://www.website.com:8080/path/to/resource?a=b&x=y#L726")))
       }
     }
+
+    "parse file expressions" should {
+      "starting with /" in {
+        val expression = "/someFilePath"
+
+        DhallParser.parse(expression).get must equalTo(Expr.Embed(File("/someFilePath")))
+      }
+
+      "starting with ./" in {
+        val expression = "./someFilePath"
+
+        DhallParser.parse(expression).get must equalTo(Expr.Embed(File("./someFilePath")))
+      }
+
+      "starting with ../" in {
+        val expression = "../someFilePath"
+
+        DhallParser.parse(expression).get must equalTo(Expr.Embed(File("../someFilePath")))
+      }
+    }
   }
 }

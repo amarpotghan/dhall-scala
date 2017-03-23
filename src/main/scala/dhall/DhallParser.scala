@@ -12,7 +12,7 @@ class DhallParser private[dhall](val input: ParserInput) extends Parser {
   }
 
   def Expression: Rule1[Embed[Path]] = rule {
-    EnvExpression | UrlExpression
+    EnvExpression | UrlExpression | FileExpression
   }
 
   def EnvExpression: Rule1[Embed[Env]] = rule {
@@ -20,7 +20,11 @@ class DhallParser private[dhall](val input: ParserInput) extends Parser {
   }
 
   def UrlExpression: Rule1[Embed[Url]] = rule {
-     capture(("http://" | "https://") ~ oneOrMore(VisibleChar)) ~> ((path: String) => Embed(Url(path)))
+    capture(("http://" | "https://") ~ oneOrMore(VisibleChar)) ~> ((path: String) => Embed(Url(path)))
+  }
+
+  def FileExpression: Rule1[Embed[File]] = rule {
+    capture(("/" | "./" | "../") ~ oneOrMore(VisibleChar)) ~> ((path: String) => Embed(File(path)))
   }
 
   def Identifier: Rule0 = rule {
