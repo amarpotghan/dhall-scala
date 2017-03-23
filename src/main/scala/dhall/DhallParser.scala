@@ -7,16 +7,16 @@ import scala.util.Try
 
 class DhallParser private[dhall](val input: ParserInput) extends Parser {
 
-  def InputLine: Rule1[Embed[String]] = rule {
+  def InputLine: Rule1[Embed[Env]] = rule {
     Expression ~ EOI
   }
 
-  def Expression: Rule1[Embed[String]] = rule {
+  def Expression: Rule1[Embed[Env]] = rule {
     Environment
   }
 
-  def Environment: Rule1[Embed[String]] = rule {
-    "env:" ~ capture(oneOrMore(Identifier)) ~> (Expr.Embed(_: String))
+  def Environment: Rule1[Embed[Env]] = rule {
+    "env:" ~ capture(oneOrMore(Identifier)) ~> ((path: String) => Embed(Env(path)))
   }
 
   def Identifier: Rule0 = rule {
@@ -25,7 +25,7 @@ class DhallParser private[dhall](val input: ParserInput) extends Parser {
 }
 
 object DhallParser {
-  def parse(input: String): Try[Embed[String]] = {
+  def parse(input: String): Try[Embed[Env]] = {
     new DhallParser(input).InputLine.run()
   }
 }

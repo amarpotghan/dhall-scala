@@ -10,7 +10,7 @@ class DhallParserSpec extends Specification with Matchers {
     "parse environment variable expressions" in {
       val expression = "env:PATH"
 
-      DhallParser.parse(expression).get must equalTo(Expr.Embed("PATH"))
+      DhallParser.parse(expression).get must equalTo(Expr.Embed(Env("PATH")))
     }
   }
 }
