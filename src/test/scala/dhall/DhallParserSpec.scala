@@ -12,5 +12,19 @@ class DhallParserSpec extends Specification with Matchers {
 
       DhallParser.parse(expression).get must equalTo(Expr.Embed(Env("PATH")))
     }
+
+    "parse url expressions" should {
+      "http url" in {
+        val expression = "http://www.website.com:8080/path/to/resource?a=b&x=y#L726"
+
+        DhallParser.parse(expression).get must equalTo(Expr.Embed(Url("http://www.website.com:8080/path/to/resource?a=b&x=y#L726")))
+      }
+
+      "https url" in {
+        val expression = "https://www.website.com:8080/path/to/resource?a=b&x=y#L726"
+
+        DhallParser.parse(expression).get must equalTo(Expr.Embed(Url("https://www.website.com:8080/path/to/resource?a=b&x=y#L726")))
+      }
+    }
   }
 }
