@@ -7,7 +7,7 @@ import scala.util.Try
 import dhall.utilities.TypeLevelFunctions.Partial2
 import dhall.utilities.MapFunctions.RichMap
 
-sealed trait Expr[+S, +A] {
+sealed trait Expr[+S, +A] extends Product with Serializable {
   import Expr._
   def map[B](f: A => B): Expr[S, B] = flatMap(a => Embed(f(a)))
   def ap[SS >: S, B](f: Expr[SS, A => B]): Expr[SS, B] = f.flatMap(map)
