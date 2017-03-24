@@ -86,4 +86,24 @@ class ExprSpec extends Specification {
       }
     }
   }
+
+  "normalize" >> {
+    "should normalize expression with " >> {
+      "Literal bool ops " >> {
+        val lit1 = BoolLit(true)
+        val lit2 = BoolLit(false)
+        "BoolAnd" >> { BoolAnd(lit1, lit2).normalize mustEqual lit2 }
+        "BoolOr" >> { BoolOr(lit1, lit2).normalize mustEqual lit1 }
+        "BoolNE" >> { BoolNE(lit1, lit2).normalize mustEqual lit1 }
+        "BoolEQ" >> { BoolEQ(lit1, lit2).normalize mustEqual lit2 }
+        "BoolIf" >> { BoolIf(lit1, IntegerLit(1), IntegerLit(2)).normalize mustEqual IntegerLit(1) }
+      }
+      "Literal natural ops " >> {
+        val lit1 = NaturalLit(1)
+        val lit2 = NaturalLit(2)
+        "NaturalPlus" >> { NaturalPlus(lit1, lit2).normalize mustEqual NaturalLit(3) }
+        "NaturalTimes" >> { NaturalTimes(lit1, lit2).normalize mustEqual NaturalLit(2) }
+      }
+    }
+  }
 }
