@@ -267,7 +267,7 @@ sealed trait Expr[+S, +A] extends Product with Serializable {
             // Natural/fold 2 Natural (+15) 1 = (15 + (15 + 1)) = 31
             case (App(App(App(NaturalFold, (NaturalLit(n))), t), f), empty) => (1 to n).foldRight(empty)((_, acc) => App(f, acc)).normalize
             case (NaturalBuild, v) => {
-              val withLabels = App(App(App(v, NaturalType), Var("Succ", 0)), Var("Zero", 0))
+              val withLabels = App(App(App(v, NaturalType), Var("Succ", 0)), Var("Zero", 0)).normalize
               def normalized(e: Expr[S, A]): Boolean = Try(result(0, e)).toOption.fold[Boolean](false)(_ => true)
               def result(n: Int, e: Expr[S, A]): Int = e match {
                 case App(Var("Succ", _), next) => result(n + 1, next)
