@@ -98,12 +98,38 @@ class ExprSpec extends Specification {
         "BoolEQ" >> { BoolEQ(lit1, lit2).normalize mustEqual lit2 }
         "BoolIf" >> { BoolIf(lit1, IntegerLit(1), IntegerLit(2)).normalize mustEqual IntegerLit(1) }
       }
+
       "Literal natural ops " >> {
         val lit1 = NaturalLit(1)
         val lit2 = NaturalLit(2)
         "NaturalPlus" >> { NaturalPlus(lit1, lit2).normalize mustEqual NaturalLit(3) }
         "NaturalTimes" >> { NaturalTimes(lit1, lit2).normalize mustEqual NaturalLit(2) }
       }
+
+      "App " >> {
+        "Lamda" >> {
+          App(Lam("x", NaturalType, NaturalTimes(Var("x", 0), Var("x", 0))), NaturalLit(2)).normalize mustEqual NaturalLit(4)
+        }
+        "NaturalFold" >> {
+          val fold = App(App(App(App(NaturalFold, NaturalLit(2)), NaturalType), Lam("x", NaturalType, NaturalPlus(Var("x", 0), NaturalLit(15)))), NaturalLit(1))
+          fold.normalize mustEqual NaturalLit(31)
+        }
+
+        "ListBuild" >> {
+          val ls =
+            App(
+              App(ListBuild, NaturalType),
+              Lam("l", Const.Type,
+                  Lam("cons",
+                      Quant("_", NaturalType,
+                            Quant("_", Var("l", 0), Var("l", 0))),
+                      Lam("nil", Var("l", 0),
+                          App(App(Var("cons", 0), NaturalLit(1)), Var("nil", 0))))))
+
+          ls.normalize mustEqual ListLit(Some(NaturalType), Seq(NaturalLit(1)))
+        }
+      }
+
     }
   }
 }
