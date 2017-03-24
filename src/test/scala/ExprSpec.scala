@@ -110,10 +110,6 @@ class ExprSpec extends Specification {
         "Lamda" >> {
           App(Lam("x", NaturalType, NaturalTimes(Var("x", 0), Var("x", 0))), NaturalLit(2)).normalize mustEqual NaturalLit(4)
         }
-        "NaturalFold" >> {
-          val fold = App(App(App(App(NaturalFold, NaturalLit(2)), NaturalType), Lam("x", NaturalType, NaturalPlus(Var("x", 0), NaturalLit(15)))), NaturalLit(1))
-          fold.normalize mustEqual NaturalLit(31)
-        }
 
         "ListBuild" >> {
           val ls =
@@ -127,6 +123,24 @@ class ExprSpec extends Specification {
                           App(App(Var("cons", 0), NaturalLit(1)), Var("nil", 0))))))
 
           ls.normalize mustEqual ListLit(Some(NaturalType), Seq(NaturalLit(1)))
+        }
+
+        "ListFold" >> {
+          val fold =
+            App(
+              App(
+                App(
+                  App(ListFold, NaturalType),
+                  ListLit(Some(NaturalType), Seq(1, 2, 3, 4).map(NaturalLit(_)))),
+                Lam("x", NaturalType, Lam("y", NaturalType, NaturalPlus(Var("x", 0), Var("y", 0))))),
+              NaturalLit(0)).normalize
+
+          fold mustEqual NaturalLit(10)
+        }
+
+        "NaturalFold" >> {
+          val fold = App(App(App(App(NaturalFold, NaturalLit(2)), NaturalType), Lam("x", NaturalType, NaturalPlus(Var("x", 0), NaturalLit(15)))), NaturalLit(1))
+          fold.normalize mustEqual NaturalLit(31)
         }
 
         "NaturalBuild" >> {
