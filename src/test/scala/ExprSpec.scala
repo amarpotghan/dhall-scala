@@ -128,6 +128,15 @@ class ExprSpec extends Specification {
 
           ls.normalize mustEqual ListLit(Some(NaturalType), Seq(NaturalLit(1)))
         }
+        "NaturalBuild" >> {
+          val ls = App(NaturalBuild,
+                       Lam("natural", Const.Type,
+                           Lam("succ", Quant("_", Var("natural", 0), Var("natural", 0)),
+                               Lam("zero", Var("natural", 0),
+                                   App(Var("succ", 0), App(Var("succ", 0), App(Var("succ", 0), App(Var("succ", 0), Var("zero", 0)))))))))
+
+          ls.normalize mustEqual NaturalLit(4)
+        }
       }
 
     }
