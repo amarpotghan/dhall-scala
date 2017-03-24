@@ -279,14 +279,14 @@ sealed trait Expr[+S, +A] extends Product with Serializable {
             case (NaturalIsZero, (NaturalLit(n))) => BoolLit(n == 0)
             case (NaturalEven, (NaturalLit(n))) => BoolLit(n % 2 == 0)
             case (NaturalOdd, (NaturalLit(n))) => BoolLit(n % 2 != 0)
-            case ((App(ListBuild, t), v)) => {
+            case (App(ListBuild, t), v) => {
               // We first label the church encoded list using "Cons" and "Nil" variables
               val withLabels = App(App(App(v, App(ListType, t)), Var("Cons", 0)), Var("Nil", 0)).normalize
               def normalized(e: Expr[S, A]): Boolean = Try(result(Nil, e)).toOption.fold[Boolean](false)(_ => true)
               // we fold over the labeled church encoded list and create a Scala List
               def result[Tag, V](acc: List[Expr[Tag, V]], e: Expr[Tag, V]): List[Expr[Tag, V]] = e match {
-                case App(App(Var("Succ", _), h), next) => result(h :: acc, next)
-                case Var("Zero", _) => acc
+                case App(App(Var("Cons", _), h), next) => result(h :: acc, next)
+                case Var("Nil", _) => acc
                 case _ => throw CompilerBug.NormalizerBug(s"${this.toString}.normalize")
               }
               if(normalized(withLabels)) ListLit(Some(t), result(Nil, withLabels)) else App(normalizedFunction, v)
