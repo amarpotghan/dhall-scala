@@ -1,18 +1,18 @@
 package dhall
 
-import dhall.Expr.Embed
+import dhall.Expr.{Embed, ListLit}
 import org.parboiled2._
 
 import scala.util.Try
 
 class DhallParser private[dhall](val input: ParserInput) extends Parser {
 
-  def InputLine: Rule1[Embed[Path]] = rule {
+  def InputLine: Rule1[Expr[Nothing, Path]] = rule {
     Expression ~ EOI
   }
 
-  def Expression: Rule1[Embed[Path]] = rule {
-    EnvExpression | UrlExpression | FileExpression
+  def Expression: Rule1[Expr[Nothing, Path]] = rule {
+    EnvExpression | UrlExpression | FileExpression | ListLiteralExpression
   }
 
   def EnvExpression: Rule1[Embed[Env]] = rule {
@@ -27,6 +27,10 @@ class DhallParser private[dhall](val input: ParserInput) extends Parser {
     capture(("/" | "./" | "../") ~ oneOrMore(VisibleChar)) ~> ((path: String) => Embed(File(path)))
   }
 
+  def ListLiteralExpression: Rule1[ListLit[Nothing, Path]] = rule {
+    ("[" ~ zeroOrMore(Expression).separatedBy(",") ~ "]") ~> ((xs: Seq[Expr[Nothing, Path]]) => ListLit(None, xs))
+  }
+
   def Identifier: Rule0 = rule {
     CharPredicate.Alpha
   }
@@ -37,7 +41,7 @@ class DhallParser private[dhall](val input: ParserInput) extends Parser {
 }
 
 object DhallParser {
-  def parse(input: String): Try[Embed[Path]] = {
+  def parse(input: String): Try[Expr[Nothing, Path]] = {
     new DhallParser(input).InputLine.run()
   }
 }
