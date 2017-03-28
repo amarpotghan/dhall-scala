@@ -158,6 +158,16 @@ class ExprSpec extends Specification {
           lengthExpr.normalize mustEqual NaturalLit(2)
         }
 
+        "ListIndexed" >> {
+          val lengthExpr = App(App(ListIndexed, NaturalType), ListLit(None, Seq(1, 2).map(NaturalLit(_))))
+          val record = Record(Map("index" -> NaturalType, "value" -> NaturalType))
+          val expected = ListLit(
+            Some(record),
+            List(RecordLit(Map("index" -> NaturalLit(0), "value" -> NaturalLit(1))),
+                 RecordLit(Map("index" -> NaturalLit(1), "value" -> NaturalLit(2)))))
+          lengthExpr.normalize mustEqual expected
+        }
+
         "NaturalFold" >> {
           val fold =
             App(
