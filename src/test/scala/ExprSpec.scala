@@ -212,6 +212,13 @@ class ExprSpec extends Specification {
           combined mustEqual RecordLit(Map("y" -> RecordLit(Map("y1" -> NaturalLit(2), "y2" -> NaturalLit(4))), "x" -> NaturalLit(1), "z" -> NaturalLit(2)))
         }
 
+        "Merge" >> {
+          val functions = RecordLit(Map("Left" -> Lam("y", NaturalType, App(NaturalIsZero, Var("y", 0))),
+                                        "Right" -> Let("x", Some(BoolType), BoolLit(true), BoolAnd(Var("x", 0), BoolLit(false)))))
+          val union1 = UnionLit("Left", NaturalLit(0), Map("Right" -> BoolType))
+          Merge(functions, union1, BoolType).normalize mustEqual BoolLit(true)
+        }
+
         "OptionalFold" >> {
           def foldApplication(value: Seq[Expr[String, Int]]) =
             App(
