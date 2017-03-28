@@ -382,7 +382,7 @@ sealed trait Expr[+S, +A] extends Product with Serializable {
         val e2Normalized = e2.normalize
         (e1Normalized, e2Normalized) match {
           case (RecordLit(mapping), UnionLit(ks, vs, _)) => {
-            mapping.get(ks).fold[Expr[T, A]](Merge(e1Normalized, e2Normalized, e3.normalize))(_.normalize)
+            mapping.get(ks).fold[Expr[T, A]](Merge(e1Normalized, e2Normalized, e3.normalize))(r => App(r, vs).normalize)
           }
           case (x, y) => Merge(x, y, e3.normalize)
         }
