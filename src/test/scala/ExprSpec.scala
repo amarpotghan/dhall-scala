@@ -139,7 +139,14 @@ class ExprSpec extends Specification {
         }
 
         "NaturalFold" >> {
-          val fold = App(App(App(App(NaturalFold, NaturalLit(2)), NaturalType), Lam("x", NaturalType, NaturalPlus(Var("x", 0), NaturalLit(15)))), NaturalLit(1))
+          val fold =
+            App(
+              App(
+                App(
+                  App(NaturalFold, NaturalLit(2)),
+                  NaturalType),
+                Lam("x", NaturalType,
+                    NaturalPlus(Var("x", 0), NaturalLit(15)))), NaturalLit(1))
           fold.normalize mustEqual NaturalLit(31)
         }
 
@@ -165,8 +172,29 @@ class ExprSpec extends Specification {
           App(NaturalOdd, NaturalLit(2)).normalize mustEqual BoolLit(false)
           App(NaturalOdd, NaturalLit(3)).normalize mustEqual BoolLit(true)
         }
-      }
 
+        "OptionalFold" >> {
+          def foldApplication(value: Seq[Expr[String, Int]]) =
+            App(
+              App(
+                App(
+                  App(
+                    App(OptionalFold, NaturalType),
+                    OptionalLit(NaturalType, value)),
+                  NaturalType),
+                Lam("x", NaturalType, Var("x", 0))),
+              NaturalLit(0))
+
+          "some case" >> {
+            val optionalFold = foldApplication(Seq(NaturalLit(1)))
+            optionalFold.normalize mustEqual NaturalLit(1)
+          }
+
+          "none case" >> {
+            foldApplication(Nil).normalize mustEqual NaturalLit(0)
+          }
+        }
+      }
     }
   }
 }
