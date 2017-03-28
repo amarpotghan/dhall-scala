@@ -1,6 +1,6 @@
 package dhall
 
-import dhall.Expr.{Embed, Lam, ListLit}
+import dhall.Expr.{Embed, Lam, ListLit, Union}
 import org.specs2.matcher.Matchers
 import org.specs2.mutable.Specification
 
@@ -100,6 +100,29 @@ class DhallParserSpec extends Specification with Matchers {
 
         DhallParser.parse(expression).get must
           equalTo(Lam(label, Embed(Env("pathA")), ListLit(None, Seq(Embed(Env("pathB")), Embed(Env("pathC"))))))
+      }
+    }
+
+    "Union expressions" should {
+      "parse Union of environment expressions" in {
+        val envAExpression = "a:env:pathA"
+        val envBExpression = "b:env:pathB"
+
+        val unionExpression = s"<$envAExpression|$envBExpression>"
+
+        DhallParser.parse(unionExpression).get must equalTo(Union(Map(("a", Embed(Env("pathA"))), ("b", Embed(Env("pathB"))))))
+      }
+
+      "parse Union of environment expression and listLiteral" in {
+        val listLitExpression = s"list:[env:pathA,env:pathB]"
+        val envCExpression = "c:env:pathC"
+
+        val combinedUnionExpression = s"<$listLitExpression|$envCExpression>"
+
+        val listLit = ListLit(None, Seq(Embed(Env("pathA")), Embed(Env("pathB"))))
+        val envC = Embed(Env("pathC"))
+
+        DhallParser.parse(combinedUnionExpression).get must equalTo(Union(Map(("list", listLit), ("c", envC))))
       }
     }
   }

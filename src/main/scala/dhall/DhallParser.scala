@@ -1,6 +1,6 @@
 package dhall
 
-import dhall.Expr.{Embed, Lam, ListLit}
+import dhall.Expr.{Embed, Lam, ListLit, Union}
 import org.parboiled2._
 
 import scala.util.Try
@@ -12,7 +12,7 @@ class DhallParser private[dhall](val input: ParserInput) extends Parser {
   }
 
   def Expression: Rule1[Expr[Nothing, Path]] = rule {
-    EnvExpression | UrlExpression | FileExpression | ListLiteralExpression | LambdaExpression
+    EnvExpression | UrlExpression | FileExpression | ListLiteralExpression | LambdaExpression | UnionExpression
   }
 
   def EnvExpression: Rule1[Embed[Env]] = rule {
@@ -34,6 +34,18 @@ class DhallParser private[dhall](val input: ParserInput) extends Parser {
 
   def ListLiteralExpression: Rule1[ListLit[Nothing, Path]] = rule {
     ("[" ~ zeroOrMore(Expression).separatedBy(",") ~ "]") ~> ((xs: Seq[Expr[Nothing, Path]]) => ListLit(None, xs))
+  }
+
+  def AlternativeType: Rule1[(String, Expr[Nothing, Path])] = rule {
+    (capture(oneOrMore(Identifier)) ~ ":" ~ Expression) ~> ((k: String, v: Expr[Nothing, Path]) => (k, v))
+  }
+
+  def AlternativeTypes: Rule1[Map[String, Expr[Nothing, Path]]] = rule {
+    zeroOrMore(AlternativeType).separatedBy("|") ~> ((xs: Seq[(String, Expr[Nothing, Path])]) => xs.toMap)
+  }
+
+  def UnionExpression: Rule1[Union[Nothing, Path]] = rule {
+    ("<" ~ AlternativeTypes ~ ">") ~> (Union(_: Map[String, Expr[Nothing, Path]]))
   }
 
   def Identifier: Rule0 = rule {
