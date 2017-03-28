@@ -138,6 +138,11 @@ class ExprSpec extends Specification {
           fold mustEqual NaturalLit(10)
         }
 
+        "ListReverse" >> {
+          val reverseExpr = App(App(ListReverse, NaturalType), ListLit(None, Seq(1, 2, 3).map(NaturalLit(_))))
+          reverseExpr.normalize mustEqual ListLit(Some(NaturalType), Seq(3, 2, 1).map(NaturalLit(_)))
+        }
+
         "NaturalFold" >> {
           val fold =
             App(
