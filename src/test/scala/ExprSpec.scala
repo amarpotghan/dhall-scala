@@ -106,6 +106,35 @@ class ExprSpec extends Specification {
         "NaturalTimes" >> { NaturalTimes(lit1, lit2).normalize mustEqual NaturalLit(2) }
       }
 
+      "Combine" >> {
+        val innerRecord1 = RecordLit(Map("y1" -> NaturalPlus(Var("x", 0), NaturalLit(1))))
+        val innerRecord2 = RecordLit(Map("y2" -> NaturalTimes(Var("x", 0), NaturalLit(2))))
+        val expr1 = App(Lam("x", NaturalType, RecordLit(Map("x" -> Var("x", 0), "y" -> innerRecord1))), NaturalLit(1))
+        val expr2 = App(Lam("x", NaturalType, RecordLit(Map("z" -> Var("x", 0), "y" -> innerRecord2))), NaturalLit(2))
+        val combined = Combine(expr1, expr2).normalize
+        combined mustEqual RecordLit(Map("y" -> RecordLit(Map("y1" -> NaturalLit(2), "y2" -> NaturalLit(4))), "x" -> NaturalLit(1), "z" -> NaturalLit(2)))
+      }
+
+      "Merge" >> {
+        val functions = RecordLit(Map("Left" -> Lam("y", NaturalType, App(NaturalIsZero, Var("y", 0))),
+                                      "Right" -> Lam("x", BoolType, Let("x", Some(BoolType), BoolLit(true), BoolAnd(Var("x", 0), BoolLit(true))))))
+
+        val union1 = UnionLit("Left", NaturalLit(0), Map("Right" -> BoolType))
+        val union2 = UnionLit("Right", BoolLit(false), Map("Left" -> NaturalType))
+
+        Merge(functions, union1, BoolType).normalize mustEqual BoolLit(true)
+        Merge(functions, union2, BoolType).normalize mustEqual BoolLit(true)
+      }
+
+      "Field" >> {
+        val record = RecordLit(Map("x" -> NaturalLit(1), "y" -> NaturalLit(2)))
+        val existing = "y"
+        val nonExisting = "z"
+
+        Field(record, existing).normalize mustEqual NaturalLit(2)
+        Field(record, nonExisting).normalize mustEqual Field(record, nonExisting)
+      }
+
       "App " >> {
         "Lamda" >> {
           App(Lam("x", NaturalType, NaturalTimes(Var("x", 0), Var("x", 0))), NaturalLit(2)).normalize mustEqual NaturalLit(4)
@@ -201,35 +230,6 @@ class ExprSpec extends Specification {
         "NaturalOdd" >> {
           App(NaturalOdd, NaturalLit(2)).normalize mustEqual BoolLit(false)
           App(NaturalOdd, NaturalLit(3)).normalize mustEqual BoolLit(true)
-        }
-
-        "Combine" >> {
-          val innerRecord1 = RecordLit(Map("y1" -> NaturalPlus(Var("x", 0), NaturalLit(1))))
-          val innerRecord2 = RecordLit(Map("y2" -> NaturalTimes(Var("x", 0), NaturalLit(2))))
-          val expr1 = App(Lam("x", NaturalType, RecordLit(Map("x" -> Var("x", 0), "y" -> innerRecord1))), NaturalLit(1))
-          val expr2 = App(Lam("x", NaturalType, RecordLit(Map("z" -> Var("x", 0), "y" -> innerRecord2))), NaturalLit(2))
-          val combined = Combine(expr1, expr2).normalize
-          combined mustEqual RecordLit(Map("y" -> RecordLit(Map("y1" -> NaturalLit(2), "y2" -> NaturalLit(4))), "x" -> NaturalLit(1), "z" -> NaturalLit(2)))
-        }
-
-        "Merge" >> {
-          val functions = RecordLit(Map("Left" -> Lam("y", NaturalType, App(NaturalIsZero, Var("y", 0))),
-                                        "Right" -> Lam("x", BoolType, Let("x", Some(BoolType), BoolLit(true), BoolAnd(Var("x", 0), BoolLit(true))))))
-
-          val union1 = UnionLit("Left", NaturalLit(0), Map("Right" -> BoolType))
-          val union2 = UnionLit("Right", BoolLit(false), Map("Left" -> NaturalType))
-
-          Merge(functions, union1, BoolType).normalize mustEqual BoolLit(true)
-          Merge(functions, union2, BoolType).normalize mustEqual BoolLit(true)
-        }
-
-        "Field" >> {
-          val record = RecordLit(Map("x" -> NaturalLit(1), "y" -> NaturalLit(2)))
-          val existing = "y"
-          val nonExisting = "z"
-
-          Field(record, existing).normalize mustEqual NaturalLit(2)
-          Field(record, nonExisting).normalize mustEqual Field(record, nonExisting)
         }
 
         "OptionalFold" >> {
