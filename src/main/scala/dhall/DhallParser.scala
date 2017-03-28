@@ -1,6 +1,6 @@
 package dhall
 
-import dhall.Expr.{Embed, Lam, ListLit, Union}
+import dhall.Expr.{Embed, Lam, ListLit, Union, UnionLit}
 import org.parboiled2._
 
 import scala.util.Try
@@ -12,7 +12,13 @@ class DhallParser private[dhall](val input: ParserInput) extends Parser {
   }
 
   def Expression: Rule1[Expr[Nothing, Path]] = rule {
-    EnvExpression | UrlExpression | FileExpression | ListLiteralExpression | LambdaExpression | UnionExpression
+    EnvExpression |
+    UrlExpression |
+    FileExpression |
+    ListLiteralExpression |
+    LambdaExpression |
+    UnionExpression |
+    UnionLiteralExpression
   }
 
   def EnvExpression: Rule1[Embed[Env]] = rule {
@@ -46,6 +52,12 @@ class DhallParser private[dhall](val input: ParserInput) extends Parser {
 
   def UnionExpression: Rule1[Union[Nothing, Path]] = rule {
     ("<" ~ AlternativeTypes ~ ">") ~> (Union(_: Map[String, Expr[Nothing, Path]]))
+  }
+
+  def UnionLiteralExpression: Rule1[UnionLit[Nothing, Path]] = rule {
+    ("<" ~ capture(oneOrMore(Identifier)) ~ "=" ~ Expression ~ optional("|" ~ AlternativeTypes) ~ ">") ~>
+      ((label: String, expr: Expr[Nothing, Path], map: Option[Map[String, Expr[Nothing, Path]]]) =>
+        UnionLit(label, expr, map.getOrElse(Map.empty)))
   }
 
   def Identifier: Rule0 = rule {

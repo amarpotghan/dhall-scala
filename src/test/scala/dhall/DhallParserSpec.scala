@@ -1,6 +1,6 @@
 package dhall
 
-import dhall.Expr.{Embed, Lam, ListLit, Union}
+import dhall.Expr.{Embed, Lam, ListLit, Union, UnionLit}
 import org.specs2.matcher.Matchers
 import org.specs2.mutable.Specification
 
@@ -123,6 +123,53 @@ class DhallParserSpec extends Specification with Matchers {
         val envC = Embed(Env("pathC"))
 
         DhallParser.parse(combinedUnionExpression).get must equalTo(Union(Map(("list", listLit), ("c", envC))))
+      }
+    }
+
+    "UnionLiteral expressions" should {
+      "parse UnionLiteral of environment expressions" should {
+        "without alternative types" in {
+          val envAExpression = "a=env:pathA"
+          val unionExpression = s"<$envAExpression>"
+
+          DhallParser.parse(unionExpression).get must equalTo(UnionLit("a", Embed(Env("pathA")), Map.empty))
+        }
+
+        "with alternative types" in {
+          val envAExpression = "a=env:pathA"
+          val envBExpression = "b:env:pathB"
+          val envCExpression = "c:env:pathC"
+          val unionExpression = s"<$envAExpression|$envBExpression|$envCExpression>"
+
+          DhallParser.parse(unionExpression).get must
+            equalTo(UnionLit("a", Embed(Env("pathA")), Map(("b", Embed(Env("pathB"))), ("c", Embed(Env("pathC"))))))
+
+        }
+      }
+
+      "parse UnionLiteral of listLiteral expressions" should {
+        "without alternative types" in {
+          val listLitExpression = s"list=[env:pathA,env:pathB]"
+
+          val unionExpression = s"<$listLitExpression>"
+
+          val listLit = ListLit(None, Seq(Embed(Env("pathA")), Embed(Env("pathB"))))
+
+          DhallParser.parse(unionExpression).get must equalTo(UnionLit("list", listLit, Map.empty))
+        }
+
+        "with alternative types" in {
+          val listLitExpression = s"list=[env:pathA]"
+          val envBExpression = "b:env:pathB"
+          val envCExpression = "c:env:pathC"
+
+          val unionExpression = s"<$listLitExpression|$envBExpression|$envCExpression>"
+
+          val listLit = ListLit(None, Seq(Embed(Env("pathA"))))
+
+          DhallParser.parse(unionExpression).get must
+            equalTo(UnionLit("list", listLit, Map(("b", Embed(Env("pathB"))), ("c", Embed(Env("pathC"))))))
+        }
       }
     }
   }
