@@ -214,9 +214,13 @@ class ExprSpec extends Specification {
 
         "Merge" >> {
           val functions = RecordLit(Map("Left" -> Lam("y", NaturalType, App(NaturalIsZero, Var("y", 0))),
-                                        "Right" -> Let("x", Some(BoolType), BoolLit(true), BoolAnd(Var("x", 0), BoolLit(false)))))
+                                        "Right" -> Lam("x", BoolType, Let("x", Some(BoolType), BoolLit(true), BoolAnd(Var("x", 0), BoolLit(true))))))
+
           val union1 = UnionLit("Left", NaturalLit(0), Map("Right" -> BoolType))
+          val union2 = UnionLit("Right", BoolLit(false), Map("Left" -> NaturalType))
+
           Merge(functions, union1, BoolType).normalize mustEqual BoolLit(true)
+          Merge(functions, union2, BoolType).normalize mustEqual BoolLit(true)
         }
 
         "OptionalFold" >> {
