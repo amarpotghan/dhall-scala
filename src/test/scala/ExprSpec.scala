@@ -223,6 +223,15 @@ class ExprSpec extends Specification {
           Merge(functions, union2, BoolType).normalize mustEqual BoolLit(true)
         }
 
+        "Field" >> {
+          val record = RecordLit(Map("x" -> NaturalLit(1), "y" -> NaturalLit(2)))
+          val existing = "y"
+          val nonExisting = "z"
+
+          Field(record, existing).normalize mustEqual NaturalLit(2)
+          Field(record, nonExisting).normalize mustEqual Field(record, nonExisting)
+        }
+
         "OptionalFold" >> {
           def foldApplication(value: Seq[Expr[String, Int]]) =
             App(
