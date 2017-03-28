@@ -203,6 +203,15 @@ class ExprSpec extends Specification {
           App(NaturalOdd, NaturalLit(3)).normalize mustEqual BoolLit(true)
         }
 
+        "Combine" >> {
+          val innerRecord1 = RecordLit(Map("y1" -> NaturalPlus(Var("x", 0), NaturalLit(1))))
+          val innerRecord2 = RecordLit(Map("y2" -> NaturalTimes(Var("x", 0), NaturalLit(2))))
+          val expr1 = App(Lam("x", NaturalType, RecordLit(Map("x" -> Var("x", 0), "y" -> innerRecord1))), NaturalLit(1))
+          val expr2 = App(Lam("x", NaturalType, RecordLit(Map("z" -> Var("x", 0), "y" -> innerRecord2))), NaturalLit(2))
+          val combined = Combine(expr1, expr2).normalize
+          combined mustEqual RecordLit(Map("y" -> RecordLit(Map("y1" -> NaturalLit(2), "y2" -> NaturalLit(4))), "x" -> NaturalLit(1), "z" -> NaturalLit(2)))
+        }
+
         "OptionalFold" >> {
           def foldApplication(value: Seq[Expr[String, Int]]) =
             App(
