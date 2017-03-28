@@ -143,6 +143,11 @@ class ExprSpec extends Specification {
           reverseExpr.normalize mustEqual ListLit(Some(NaturalType), Seq(3, 2, 1).map(NaturalLit(_)))
         }
 
+        "ListHead" >> {
+          val headExpr = App(App(ListHead, NaturalType), ListLit(None, Seq(1, 2).map(NaturalLit(_))))
+          headExpr.normalize mustEqual OptionalLit(NaturalType, Seq(NaturalLit(1)))
+        }
+
         "NaturalFold" >> {
           val fold =
             App(
