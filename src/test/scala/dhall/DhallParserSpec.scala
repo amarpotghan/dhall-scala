@@ -1,6 +1,6 @@
 package dhall
 
-import dhall.Expr.{Embed, Lam, ListLit, Union, UnionLit}
+import dhall.Expr.{Embed, Lam, ListLit, Quant, Union, UnionLit}
 import org.specs2.matcher.Matchers
 import org.specs2.mutable.Specification
 
@@ -100,6 +100,38 @@ class DhallParserSpec extends Specification with Matchers {
 
         DhallParser.parse(expression).get must
           equalTo(Lam(label, Embed(Env("pathA")), ListLit(None, Seq(Embed(Env("pathB")), Embed(Env("pathC"))))))
+      }
+    }
+
+    "parse quant expressions" should {
+      "with forall prefix" in {
+        val envAExpression = "env:pathA"
+        val envBExpression = "env:pathB"
+        val envCExpression = "env:pathC"
+
+        val listLitExpression = s"[$envBExpression,$envCExpression]"
+
+        val label = "someLabel"
+
+        val expression = s"forall($label:$envAExpression)->$listLitExpression"
+
+        DhallParser.parse(expression).get must
+          equalTo(Quant(label, Embed(Env("pathA")), ListLit(None, Seq(Embed(Env("pathB")), Embed(Env("pathC"))))))
+      }
+
+      "with ∀ prefix" in {
+        val envAExpression = "env:pathA"
+        val envBExpression = "env:pathB"
+        val envCExpression = "env:pathC"
+
+        val listLitExpression = s"[$envBExpression,$envCExpression]"
+
+        val label = "someLabel"
+
+        val expression = s"∀($label:$envAExpression)->$listLitExpression"
+
+        DhallParser.parse(expression).get must
+          equalTo(Quant(label, Embed(Env("pathA")), ListLit(None, Seq(Embed(Env("pathB")), Embed(Env("pathC"))))))
       }
     }
 
