@@ -35,12 +35,12 @@ class DhallParser private[dhall](val input: ParserInput) extends Parser {
   }
 
   def LambdaExpression: Rule1[Lam[Nothing, Path]] = rule {
-    (Lambda ~ "(" ~ capture(oneOrMore(Identifier)) ~ ":" ~ Expression ~ ")" ~ Arrow ~ Expression) ~>
+    (LambdaSymbol ~ "(" ~ capture(oneOrMore(Identifier)) ~ ":" ~ Expression ~ ")" ~ ArrowSymbol ~ Expression) ~>
       ((label: String, domain: Expr[Nothing, Path], body: Expr[Nothing, Path]) => Lam(label, domain, body))
   }
 
   def QuantExpression: Rule1[Quant[Nothing, Path]] = rule {
-    (QuantSymbol ~ "(" ~ capture(oneOrMore(Identifier)) ~ ":" ~ Expression ~ ")" ~ Arrow ~ Expression) ~>
+    (QuantSymbol ~ "(" ~ capture(oneOrMore(Identifier)) ~ ":" ~ Expression ~ ")" ~ ArrowSymbol ~ Expression) ~>
       ((label: String, domain: Expr[Nothing, Path], codomain: Expr[Nothing, Path]) => Quant(label, domain, codomain))
   }
 
@@ -74,11 +74,11 @@ class DhallParser private[dhall](val input: ParserInput) extends Parser {
     CharPredicate.Visible
   }
 
-  def Arrow: Rule0 = rule {
+  def ArrowSymbol: Rule0 = rule {
     "->" | "→"
   }
 
-  def Lambda: Rule0 = rule {
+  def LambdaSymbol: Rule0 = rule {
     "\\" | "λ"
   }
 
