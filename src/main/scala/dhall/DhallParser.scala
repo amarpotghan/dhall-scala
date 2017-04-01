@@ -23,45 +23,45 @@ class DhallParser private[dhall](val input: ParserInput) extends Parser {
   }
 
   def EnvExpression: Rule1[Embed[Env]] = rule {
-    "env:" ~ capture(oneOrMore(Identifier)) ~> ((path: String) => Embed(Env(path)))
+    ws("env") ~ ws(":") ~ capture(oneOrMore(Identifier)) ~> ((path: String) => Embed(Env(path)))
   }
 
   def UrlExpression: Rule1[Embed[Url]] = rule {
-    capture(("http://" | "https://") ~ oneOrMore(VisibleChar)) ~> ((path: String) => Embed(Url(path)))
+    capture((ws("http://") | ws("https://")) ~ oneOrMore(VisibleChar)) ~> ((path: String) => Embed(Url(path)))
   }
 
   def FileExpression: Rule1[Embed[File]] = rule {
-    capture(("/" | "./" | "../") ~ oneOrMore(VisibleChar)) ~> ((path: String) => Embed(File(path)))
+    capture((ws("/") | ws("./") | ws("../")) ~ oneOrMore(VisibleChar)) ~> ((path: String) => Embed(File(path)))
   }
 
   def LambdaExpression: Rule1[Lam[Nothing, Path]] = rule {
-    (LambdaSymbol ~ "(" ~ capture(oneOrMore(Identifier)) ~ ":" ~ Expression ~ ")" ~ ArrowSymbol ~ Expression) ~>
+    (LambdaSymbol ~ ws("(") ~ capture(oneOrMore(Identifier)) ~ ws(":") ~ Expression ~ ws(")") ~ ArrowSymbol ~ Expression) ~>
       ((label: String, domain: Expr[Nothing, Path], body: Expr[Nothing, Path]) => Lam(label, domain, body))
   }
 
   def QuantExpression: Rule1[Quant[Nothing, Path]] = rule {
-    (QuantSymbol ~ "(" ~ capture(oneOrMore(Identifier)) ~ ":" ~ Expression ~ ")" ~ ArrowSymbol ~ Expression) ~>
+    (QuantSymbol ~ ws("(") ~ capture(oneOrMore(Identifier)) ~ ws(":") ~ Expression ~ ws(")") ~ ArrowSymbol ~ Expression) ~>
       ((label: String, domain: Expr[Nothing, Path], codomain: Expr[Nothing, Path]) => Quant(label, domain, codomain))
   }
 
   def ListLiteralExpression: Rule1[ListLit[Nothing, Path]] = rule {
-    ("[" ~ zeroOrMore(Expression).separatedBy(",") ~ "]") ~> ((xs: Seq[Expr[Nothing, Path]]) => ListLit(None, xs))
+    (ws("[") ~ zeroOrMore(Expression).separatedBy(",") ~ ws("]")) ~> ((xs: Seq[Expr[Nothing, Path]]) => ListLit(None, xs))
   }
 
   def AlternativeType: Rule1[(String, Expr[Nothing, Path])] = rule {
-    (capture(oneOrMore(Identifier)) ~ ":" ~ Expression) ~> ((k: String, v: Expr[Nothing, Path]) => (k, v))
+    (capture(oneOrMore(Identifier)) ~ ws(":") ~ Expression) ~> ((k: String, v: Expr[Nothing, Path]) => (k, v))
   }
 
   def AlternativeTypes: Rule1[Map[String, Expr[Nothing, Path]]] = rule {
-    zeroOrMore(AlternativeType).separatedBy("|") ~> ((xs: Seq[(String, Expr[Nothing, Path])]) => xs.toMap)
+    zeroOrMore(AlternativeType).separatedBy(ws("|")) ~> ((xs: Seq[(String, Expr[Nothing, Path])]) => xs.toMap)
   }
 
   def UnionExpression: Rule1[Union[Nothing, Path]] = rule {
-    ("<" ~ AlternativeTypes ~ ">") ~> (Union(_: Map[String, Expr[Nothing, Path]]))
+    (ws("<") ~ AlternativeTypes ~ ws(">")) ~> (Union(_: Map[String, Expr[Nothing, Path]]))
   }
 
   def UnionLiteralExpression: Rule1[UnionLit[Nothing, Path]] = rule {
-    ("<" ~ capture(oneOrMore(Identifier)) ~ "=" ~ Expression ~ optional("|" ~ AlternativeTypes) ~ ">") ~>
+    (ws("<") ~ capture(oneOrMore(Identifier)) ~ ws("=") ~ Expression ~ optional(ws("|") ~ AlternativeTypes) ~ ws(">")) ~>
       ((label: String, expr: Expr[Nothing, Path], map: Option[Map[String, Expr[Nothing, Path]]]) =>
         UnionLit(label, expr, map.getOrElse(Map.empty)))
   }
@@ -75,16 +75,20 @@ class DhallParser private[dhall](val input: ParserInput) extends Parser {
   }
 
   def ArrowSymbol: Rule0 = rule {
-    "->" | "→"
+    ws("->") | ws("→")
   }
 
   def LambdaSymbol: Rule0 = rule {
-    "\\" | "λ"
+    ws("\\") | ws("λ")
   }
 
   def QuantSymbol: Rule0 = rule {
-    "forall" | "∀"
+    ws("forall") | ws("∀")
   }
+
+  val WhiteSpaceChar = CharPredicate(" \n\r\t\f")
+
+  def ws(toSurround: String): Rule0 = rule { zeroOrMore(WhiteSpaceChar) ~ toSurround ~ zeroOrMore(WhiteSpaceChar) }
 }
 
 object DhallParser {
