@@ -1,6 +1,6 @@
 package dhall
 
-import dhall.Expr.{Embed, Lam, ListLit, Quant, Union, UnionLit}
+import dhall.Expr.{Embed, Lam, Let, ListLit, Quant, Union, UnionLit}
 import org.parboiled2._
 
 import scala.util.Try
@@ -18,6 +18,7 @@ class DhallParser private[dhall](val input: ParserInput) extends Parser {
     ListLiteralExpression |
     LambdaExpression |
     QuantExpression |
+    LetExpression |
     UnionExpression |
     UnionLiteralExpression
   }
@@ -42,6 +43,12 @@ class DhallParser private[dhall](val input: ParserInput) extends Parser {
   def QuantExpression: Rule1[Quant[Nothing, Path]] = rule {
     (QuantSymbol ~ ws("(") ~ capture(oneOrMore(Identifier)) ~ ws(":") ~ Expression ~ ws(")") ~ ArrowSymbol ~ Expression) ~>
       ((label: String, domain: Expr[Nothing, Path], codomain: Expr[Nothing, Path]) => Quant(label, domain, codomain))
+  }
+
+  def LetExpression: Rule1[Let[Nothing, Path]] = rule {
+    (ws("let") ~ capture(oneOrMore(Identifier)) ~ optional(ws(":") ~ Expression) ~ ws("=") ~ Expression ~ ws("in") ~ Expression) ~>
+      ((label: String, typ: Option[Expr[Nothing, Path]], expr: Expr[Nothing, Path], body: Expr[Nothing, Path]) =>
+        Let(label, typ, expr, body))
   }
 
   def ListLiteralExpression: Rule1[ListLit[Nothing, Path]] = rule {

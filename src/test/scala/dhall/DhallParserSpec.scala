@@ -1,6 +1,6 @@
 package dhall
 
-import dhall.Expr.{Embed, Lam, ListLit, Quant, Union, UnionLit}
+import dhall.Expr.{Embed, Lam, Let, ListLit, Quant, Union, UnionLit}
 import org.specs2.matcher.Matchers
 import org.specs2.mutable.Specification
 
@@ -134,7 +134,34 @@ class DhallParserSpec extends Specification with Matchers {
           equalTo(Quant(label, Embed(Env("pathA")), ListLit(None, Seq(Embed(Env("pathB")), Embed(Env("pathC"))))))
       }
     }
-    
+
+    "parse let expressions" should {
+      "with type" in {
+        val envAExpression = "env:pathA"
+        val envBExpression = "env:pathB"
+        val envCExpression = "env:pathC"
+
+        val label = "someLabel"
+
+        val expression = s"let $label : $envAExpression = $envBExpression in $envCExpression"
+
+        DhallParser.parse(expression).get must
+          equalTo(Let(label, Some(Embed(Env("pathA"))), Embed(Env("pathB")), Embed(Env("pathC"))))
+      }
+
+      "without type" in {
+        val envAExpression = "env : pathA"
+        val envBExpression = "env:pathB"
+
+        val label = "someLabel"
+
+        val expression = s"let $label = $envAExpression in $envBExpression"
+
+        DhallParser.parse(expression).get must
+          equalTo(Let(label, None, Embed(Env("pathA")), Embed(Env("pathB"))))
+      }
+    }
+
     "Union expressions" should {
       "parse Union of environment expressions" in {
         val envAExpression = "a : env : pathA"
