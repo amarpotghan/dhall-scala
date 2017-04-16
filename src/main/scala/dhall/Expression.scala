@@ -405,6 +405,10 @@ object Expression extends ExpressionInstances {
    case object Kind extends Const
   }
 
+  // Syntax:
+  //   label
+  // or:
+  //   label@index
   case class Var(label: String, index: Int) extends Expression[Nothing, Nothing]
 
   // Syntax:
