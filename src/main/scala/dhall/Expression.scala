@@ -406,6 +406,11 @@ object Expression extends ExpressionInstances {
   }
 
   case class Var(label: String, index: Int) extends Expression[Nothing, Nothing]
+
+  // Syntax:
+  //   λ(x : A) -> b
+  // translates to:
+  //   Lam(x, A, b)
   case class Lam[+S, +A](domainLabel: String, domain: Expression[S, A], body: Expression[S, A]) extends Expression[S, A]
   case class Quant[+S, +A](domainLabel: String, domain: Expression[S, A], codomain: Expression[S, A]) extends Expression[S, A]
   case class App[+S, +A](function: Expression[S, A], value: Expression[S, A]) extends Expression[S, A]
