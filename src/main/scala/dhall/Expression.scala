@@ -12,16 +12,16 @@ sealed trait Expression[+S, +A] extends Product with Serializable {
   def map[B](f: A => B): Expression[S, B] = flatMap(a => Embed(f(a)))
   def ap[SS >: S, B](f: Expression[SS, A => B]): Expression[SS, B] = f.flatMap(map)
   def leftMap[T](f: S => T): Expression[T, A] = this match {
-    case constant: Const => constant
-    case variable: Var => variable
-    case Lam(label, typ, body) => Lam(label, typ.leftMap(f), body.leftMap(f))
-    case Quant(label, typ, body) => Quant(label, typ.leftMap(f), body.leftMap(f))
-    case App(function, value) => App(function.leftMap(f), value.leftMap(f))
+    case constant: Const             => constant
+    case variable: Variable          => variable
+    case Lam(label, typ, body)       => Lam(label, typ.leftMap(f), body.leftMap(f))
+    case Quant(label, typ, body)     => Quant(label, typ.leftMap(f), body.leftMap(f))
+    case App(function, value)        => App(function.leftMap(f), value.leftMap(f))
     case Let(label, typ, expr, body) => Let(label, typ.map(_.leftMap(f)), expr.leftMap(f), body.leftMap(f))
-    case Annot(e1, e2) => Annot(e1.leftMap(f), e2.leftMap(f))
-    case BoolType => BoolType
-    case boolLit: BoolLit => boolLit
-    case BoolAnd(e1, e2) => BoolAnd(e1.leftMap(f), e2.leftMap(f))
+    case Annot(e1, e2)               => Annot(e1.leftMap(f), e2.leftMap(f))
+    case BoolType                    => BoolType
+    case boolLit: BoolLit            => boolLit
+    case BoolAnd(e1, e2)             => BoolAnd(e1.leftMap(f), e2.leftMap(f))
     case BoolOr(e1, e2) => BoolOr(e1.leftMap(f), e2.leftMap(f))
     case BoolEQ(e1, e2) => BoolEQ(e1.leftMap(f), e2.leftMap(f))
     case BoolNE(e1, e2) => BoolNE(e1.leftMap(f), e2.leftMap(f))
@@ -66,16 +66,16 @@ sealed trait Expression[+S, +A] extends Product with Serializable {
   }
 
   def flatMap[SS >: S, B](f: A => Expression[SS, B]): Expression[SS, B] = this match {
-    case constant: Const => constant
-    case variable: Var => variable
-    case Lam(label, typ, body) => Lam(label, typ.flatMap(f), body.flatMap(f))
-    case Quant(label, typ, body) => Quant(label, typ.flatMap(f), body.flatMap(f))
-    case App(function, value) => App(function.flatMap(f), value.flatMap(f))
+    case constant: Const             => constant
+    case variable: Variable          => variable
+    case Lam(label, typ, body)       => Lam(label, typ.flatMap(f), body.flatMap(f))
+    case Quant(label, typ, body)     => Quant(label, typ.flatMap(f), body.flatMap(f))
+    case App(function, value)        => App(function.flatMap(f), value.flatMap(f))
     case Let(label, typ, expr, body) => Let(label, typ.map(_.flatMap(f)), expr.flatMap(f), body.flatMap(f))
-    case Annot(e1, e2) => Annot(e1.flatMap(f), e2.flatMap(f))
-    case BoolType => BoolType
-    case boolLit: BoolLit => boolLit
-    case BoolAnd(e1, e2) => BoolAnd(e1.flatMap(f), e2.flatMap(f))
+    case Annot(e1, e2)               => Annot(e1.flatMap(f), e2.flatMap(f))
+    case BoolType                    => BoolType
+    case boolLit: BoolLit            => boolLit
+    case BoolAnd(e1, e2)             => BoolAnd(e1.flatMap(f), e2.flatMap(f))
     case BoolOr(e1, e2) => BoolOr(e1.flatMap(f), e2.flatMap(f))
     case BoolEQ(e1, e2) => BoolEQ(e1.flatMap(f), e2.flatMap(f))
     case BoolNE(e1, e2) => BoolNE(e1.flatMap(f), e2.flatMap(f))
@@ -120,23 +120,23 @@ sealed trait Expression[+S, +A] extends Product with Serializable {
   }
 
   // N.B. - This method is not stack safe
-  def shiftVariableIndices[T](by: Int, variable: Var): Expression[T, A] = {
+  def shiftVariableIndices[T](by: Int, variable: Variable): Expression[T, A] = {
     def shift[X, Y, Z]: Expression[X, Z] => Expression[Y, Z] = _.shiftVariableIndices(by, variable)
     def withAdjustedIndex(label: String, expr: Expression[S, A]): Expression[T, A] = {
-      val adjustedIndex = if(variable.label == label) variable.index + 1 else variable.index
+      val adjustedIndex = if(variable.symbol == label) variable.index + 1 else variable.index
       expr.shiftVariableIndices(by, variable.copy(index = adjustedIndex))
     }
     this match {
-      case constant: Const => constant
-      case Var(name, currentIndex) => {
-        val newIndex = if(name == variable.label && currentIndex <= variable.index) currentIndex + by else currentIndex
-        Var(name, newIndex)
+      case constant: Const                        => constant
+      case Variable(name, currentIndex)           => {
+        val newIndex = if(name == variable.symbol && currentIndex <= variable.index) currentIndex + by else currentIndex
+        Variable(name, newIndex)
       }
-      case Lam(domainName, typeExpr, bodyExpr) => Lam(domainName, shift(typeExpr), withAdjustedIndex(domainName, bodyExpr))
-      case Quant(domainName, typeExpr, bodyExpr) => Quant(domainName, shift(typeExpr), withAdjustedIndex(domainName, bodyExpr))
-      case App(function, value) => App(shift(function), shift(value))
+      case Lam(domainName, typeExpr, bodyExpr)    => Lam(domainName, shift(typeExpr), withAdjustedIndex(domainName, bodyExpr))
+      case Quant(domainName, typeExpr, bodyExpr)  => Quant(domainName, shift(typeExpr), withAdjustedIndex(domainName, bodyExpr))
+      case App(function, value)                   => App(shift(function), shift(value))
       case Let(label, typExprOpt, expr, bodyExpr) => Let(label, typExprOpt.map(shift), shift(expr), withAdjustedIndex(label, bodyExpr))
-      case Annot(value, typ) => Annot(shift(value), shift(typ))
+      case Annot(value, typ)                      => Annot(shift(value), shift(typ))
       case BoolType => BoolType
       case boolLit: BoolLit => boolLit
       case BoolAnd(e1, e2) => BoolAnd(shift(e1), shift(e2))
@@ -185,28 +185,28 @@ sealed trait Expression[+S, +A] extends Product with Serializable {
   }
 
   // N.B. - This method is not stack safe
-  def substitute[T, AA >: A](variable: Var, by: Expression[T, AA]): Expression[T, AA] = {
+  def substitute[T, AA >: A](variable: Variable, by: Expression[T, AA]): Expression[T, AA] = {
     def subst: Expression[S, AA] => Expression[T, AA] = _.substitute(variable, by)
     def withShift(label: String, expr: Expression[S, AA]): Expression[T, AA] = {
-      val shifted = if(variable.label == label) variable.index + 1 else variable.index
-      expr.substitute(variable.copy(index = shifted), by.shiftVariableIndices(1, Var(label, 0)))
+      val shifted = if(variable.symbol == label) variable.index + 1 else variable.index
+      expr.substitute(variable.copy(index = shifted), by.shiftVariableIndices(1, Variable(label, 0)))
     }
 
     this match {
-      case const: Const => const
-      case Lam(label, typExpr, bodyExpr) => Lam(label, subst(typExpr), withShift(label, bodyExpr))
-      case Quant(label, typeExpr, bodyExpr) => Quant(label, subst(typeExpr), withShift(label, bodyExpr))
-      case App(function, value) => App(subst(function), subst(value))
+      case const: Const                                => const
+      case Lam(label, typExpr, bodyExpr)               => Lam(label, subst(typExpr), withShift(label, bodyExpr))
+      case Quant(label, typeExpr, bodyExpr)            => Quant(label, subst(typeExpr), withShift(label, bodyExpr))
+      case App(function, value)                        => App(subst(function), subst(value))
       case Let(label, typExprOpt, valueExpr, bodyExpr) => Let(label, typExprOpt.map(subst), subst(valueExpr), withShift(label, bodyExpr))
-      case v: Var => if(v == variable) by else v
-      case Annot(e1, e2) => Annot(subst(e1), subst(e2))
-      case BoolType => BoolType
-      case boolLit: BoolLit => boolLit
-      case BoolAnd(e1, e2) => BoolAnd(subst(e1), subst(e2))
-      case BoolOr(e1, e2) => BoolOr(subst(e1), subst(e2))
-      case BoolEQ(e1, e2) => BoolEQ(subst(e1), subst(e2))
-      case BoolNE(e1, e2) => BoolNE(subst(e1), subst(e2))
-      case BoolIf(ifPart, thenPart, elsePart) => BoolIf(subst(ifPart), subst(thenPart), subst(elsePart))
+      case v: Variable                                 => if(v == variable) by else v
+      case Annot(e1, e2)                               => Annot(subst(e1), subst(e2))
+      case BoolType                                    => BoolType
+      case boolLit: BoolLit                            => boolLit
+      case BoolAnd(e1, e2)                             => BoolAnd(subst(e1), subst(e2))
+      case BoolOr(e1, e2)                              => BoolOr(subst(e1), subst(e2))
+      case BoolEQ(e1, e2)                              => BoolEQ(subst(e1), subst(e2))
+      case BoolNE(e1, e2)                              => BoolNE(subst(e1), subst(e2))
+      case BoolIf(ifPart, thenPart, elsePart)          => BoolIf(subst(ifPart), subst(thenPart), subst(elsePart))
       case NaturalType => NaturalType
       case NaturalLit(n) => NaturalLit(n)
       case NaturalFold => NaturalFold
@@ -250,14 +250,14 @@ sealed trait Expression[+S, +A] extends Product with Serializable {
   // N.B. - This method is not stack safe
   def normalize[T]: Expression[T, A] = {
     this match {
-      case const: Const => const
-      case variable: Var => variable
-      case Lam(label, typExpr, bodyExpr) => Lam(label, typExpr.normalize, bodyExpr.normalize)
+      case const: Const                   => const
+      case variable: Variable             => variable
+      case Lam(label, typExpr, bodyExpr)  => Lam(label, typExpr.normalize, bodyExpr.normalize)
       case Quant(label, domain, codomain) => Quant(label, domain.normalize, codomain.normalize)
-      case App(function, arg) => {
+      case App(function, arg)             => {
         function.normalize match {
           // normalize ((\x -> f x) a) => normalize (f a)
-          case Lam(label, typExpr, bodyExpr) => bodyExpr.substitute(Var(label, 0), arg.shiftVariableIndices(1, Var(label, 0))).shiftVariableIndices(-1, Var(label, 0)).normalize
+          case Lam(label, typExpr, bodyExpr) => bodyExpr.substitute(Variable(label, 0), arg.shiftVariableIndices(1, Variable(label, 0))).shiftVariableIndices(-1, Variable(label, 0)).normalize
           case normalizedFunction => (normalizedFunction, arg.normalize) match {
             // normalize (List/build t ((List/fold t) e)) = normalize e
             case (App(ListBuild, _), App(App(ListFold, _), argument)) => argument.normalize
@@ -267,12 +267,12 @@ sealed trait Expression[+S, +A] extends Product with Serializable {
             // Natural/fold 2 Natural (+15) 1 = (15 + (15 + 1)) = 31
             case (App(App(App(NaturalFold, (NaturalLit(n))), t), f), empty) => (1 to n).foldRight(empty)((_, acc) => App(f, acc)).normalize
             case (NaturalBuild, v) => {
-              val withLabels = App(App(App(v, NaturalType), Var("Succ", 0)), Var("Zero", 0)).normalize
+              val withLabels = App(App(App(v, NaturalType), Variable("Succ", 0)), Variable("Zero", 0)).normalize
               def normalized(e: Expression[S, A]): Boolean = Try(result(0, e)).toOption.fold[Boolean](false)(_ => true)
               def result(n: Int, e: Expression[S, A]): Int = e match {
-                case App(Var("Succ", _), next) => result(n + 1, next)
-                case Var("Zero", _) => n
-                case _ => throw CompilerBug.NormalizerBug(s"${this.toString}.normalize")
+                case App(Variable("Succ", _), next) => result(n + 1, next)
+                case Variable("Zero", _)            => n
+                case _                              => throw CompilerBug.NormalizerBug(s"${this.toString}.normalize")
               }
               if(normalized(withLabels)) NaturalLit(result(0, withLabels)) else App(normalizedFunction, v)
             }
@@ -281,13 +281,13 @@ sealed trait Expression[+S, +A] extends Product with Serializable {
             case (NaturalOdd, (NaturalLit(n))) => BoolLit(n % 2 != 0)
             case (App(ListBuild, t), v) => {
               // We first label the church encoded list using "Cons" and "Nil" variables
-              val withLabels = App(App(App(v, App(ListType, t)), Var("Cons", 0)), Var("Nil", 0)).normalize
+              val withLabels = App(App(App(v, App(ListType, t)), Variable("Cons", 0)), Variable("Nil", 0)).normalize
               def normalized(e: Expression[S, A]): Boolean = Try(result(Nil, e)).toOption.fold[Boolean](false)(_ => true)
               // we fold over the labeled church encoded list and create a Scala List
               def result[Tag, V](acc: List[Expression[Tag, V]], e: Expression[Tag, V]): List[Expression[Tag, V]] = e match {
-                case App(App(Var("Cons", _), h), next) => result(h :: acc, next)
-                case Var("Nil", _) => acc
-                case _ => throw CompilerBug.NormalizerBug(s"${this.toString}.normalize")
+                case App(App(Variable("Cons", _), h), next) => result(h :: acc, next)
+                case Variable("Nil", _)                     => acc
+                case _                                      => throw CompilerBug.NormalizerBug(s"${this.toString}.normalize")
               }
               if(normalized(withLabels)) ListLit(Some(t), result(Nil, withLabels)) else App(normalizedFunction, v)
             }
@@ -305,19 +305,19 @@ sealed trait Expression[+S, +A] extends Product with Serializable {
           }
         }
       }
-      case Let(binding, _, expr, body) => body.substitute(Var(binding, 0), expr.shiftVariableIndices(1, Var(binding, 0))).shiftVariableIndices(-1, Var(binding, 0)).normalize
-      case Annot(e1, _) => e1.normalize
-      case BoolType => BoolType
-      case BoolLit(b) => BoolLit(b)
-      case BoolAnd(e1, e2) => (e1.normalize, e2.normalize) match {
+      case Let(binding, _, expr, body)    => body.substitute(Variable(binding, 0), expr.shiftVariableIndices(1, Variable(binding, 0))).shiftVariableIndices(-1, Variable(binding, 0)).normalize
+      case Annot(e1, _)                   => e1.normalize
+      case BoolType                       => BoolType
+      case BoolLit(b)                     => BoolLit(b)
+      case BoolAnd(e1, e2)                => (e1.normalize, e2.normalize) match {
         case (BoolLit(l1), BoolLit(l2)) => BoolLit(l1 && l2)
         case (x, y) => BoolAnd(x, y)
       }
-      case BoolOr(e1, e2) => (e1.normalize, e2.normalize) match {
+      case BoolOr(e1, e2)                 => (e1.normalize, e2.normalize) match {
         case (BoolLit(l1), BoolLit(l2)) => BoolLit(l1 || l2)
         case (x, y) => BoolOr(x, y)
       }
-      case BoolEQ(e1, e2) => (e1.normalize, e2.normalize) match {
+      case BoolEQ(e1, e2)                 => (e1.normalize, e2.normalize) match {
         case (BoolLit(l1), BoolLit(l2)) => BoolLit(l1 == l2)
         case (x, y) => BoolEQ(x, y)
       }
@@ -409,7 +409,7 @@ object Expression extends ExpressionInstances {
   //   label
   // or:
   //   label@index
-  case class Var(label: String, index: Int) extends Expression[Nothing, Nothing]
+  case class Variable(symbol: String, index: Int) extends Expression[Nothing, Nothing]
 
   // Syntax:
   //   λ(x : A) -> b
