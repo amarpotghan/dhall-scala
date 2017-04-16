@@ -54,10 +54,10 @@ sealed trait Expression[+S, +A] extends Product with Serializable {
     case OptionalType => OptionalType
     case OptionalLit(typeParam, value) => OptionalLit(typeParam.leftMap(f), value.map(_.leftMap(f)))
     case OptionalFold => OptionalFold
-    case Record(mapping) => Record(mapping.mapValue(_.leftMap(f)))
-    case RecordLit(mapping) => RecordLit(mapping.mapValue(_.leftMap(f)))
-    case Union(mapping) => Union(mapping.mapValue(_.leftMap(f)))
-    case UnionLit(label, expr, mapping) => UnionLit(label, expr.leftMap(f), mapping.mapValue(_.leftMap(f)))
+    case Record(mapping) => Record(mapping.mapValues(_.leftMap(f)))
+    case RecordLit(mapping) => RecordLit(mapping.mapValues(_.leftMap(f)))
+    case Union(mapping) => Union(mapping.mapValues(_.leftMap(f)))
+    case UnionLit(label, expr, mapping) => UnionLit(label, expr.leftMap(f), mapping.mapValues(_.leftMap(f)))
     case Combine(e1, e2) => Combine(e1.leftMap(f), e2.leftMap(f))
     case Merge(e1, e2, typ) => Merge(e1.leftMap(f), e2.leftMap(f), typ.leftMap(f))
     case Field(record, name) => Field(record.leftMap(f), name)
@@ -108,10 +108,10 @@ sealed trait Expression[+S, +A] extends Product with Serializable {
     case OptionalType => OptionalType
     case OptionalLit(typeParam, value) => OptionalLit(typeParam.flatMap(f), value.map(_.flatMap(f)))
     case OptionalFold => OptionalFold
-    case Record(mapping) => Record(mapping.mapValue(_.flatMap(f)))
-    case RecordLit(mapping) => RecordLit(mapping.mapValue(_.flatMap(f)))
-    case Union(mapping) => Union(mapping.mapValue(_.flatMap(f)))
-    case UnionLit(label, expr, mapping) => UnionLit(label, expr.flatMap(f), mapping.mapValue(_.flatMap(f)))
+    case Record(mapping) => Record(mapping.mapValues(_.flatMap(f)))
+    case RecordLit(mapping) => RecordLit(mapping.mapValues(_.flatMap(f)))
+    case Union(mapping) => Union(mapping.mapValues(_.flatMap(f)))
+    case UnionLit(label, expr, mapping) => UnionLit(label, expr.flatMap(f), mapping.mapValues(_.flatMap(f)))
     case Combine(e1, e2) => Combine(e1.flatMap(f), e2.flatMap(f))
     case Merge(e1, e2, typ) => Merge(e1.flatMap(f), e2.flatMap(f), typ.flatMap(f))
     case Field(record, name) => Field(record.flatMap(f), name)
@@ -172,10 +172,10 @@ sealed trait Expression[+S, +A] extends Product with Serializable {
       case OptionalType => OptionalType
       case OptionalFold => OptionalFold
       case OptionalLit(typeParam, values) => OptionalLit(shift(typeParam), values.map(shift))
-      case Record(mapping) => Record(mapping.mapValue(shift))
-      case RecordLit(mapping) => RecordLit(mapping.mapValue(shift))
-      case Union(mapping) => Union(mapping.mapValue(shift))
-      case UnionLit(label, expr, mapping) => UnionLit(label, shift(expr), mapping.mapValue(shift))
+      case Record(mapping) => Record(mapping.mapValues(shift))
+      case RecordLit(mapping) => RecordLit(mapping.mapValues(shift))
+      case Union(mapping) => Union(mapping.mapValues(shift))
+      case UnionLit(label, expr, mapping) => UnionLit(label, shift(expr), mapping.mapValues(shift))
       case Combine(e1, e2) => Combine(shift(e1), shift(e2))
       case Merge(e1, e2, typ) => Merge(shift(e1), shift(e2), shift(typ))
       case Field(record, name) => Field(shift(record), name)
@@ -235,10 +235,10 @@ sealed trait Expression[+S, +A] extends Product with Serializable {
       case OptionalType => OptionalType
       case OptionalLit(typ, values) => OptionalLit(subst(typ), values.map(subst))
       case OptionalFold => OptionalFold
-      case Record(mapping) => Record(mapping.mapValue(subst))
-      case RecordLit(mapping) => RecordLit(mapping.mapValue(subst))
-      case Union(mapping) => Union(mapping.mapValue(subst))
-      case UnionLit(label, expr, mapping) => UnionLit(label, subst(expr), mapping.mapValue(subst))
+      case Record(mapping) => Record(mapping.mapValues(subst))
+      case RecordLit(mapping) => RecordLit(mapping.mapValues(subst))
+      case Union(mapping) => Union(mapping.mapValues(subst))
+      case UnionLit(label, expr, mapping) => UnionLit(label, subst(expr), mapping.mapValues(subst))
       case Combine(e1, e2) => Combine(subst(e1), subst(e2))
       case Merge(e1, e2, e3) => Merge(subst(e1), subst(e2), subst(e3))
       case Field(record, name) => Field(subst(record), name)
@@ -366,13 +366,13 @@ sealed trait Expression[+S, +A] extends Product with Serializable {
       case OptionalType => OptionalType
       case OptionalLit(t, es) => OptionalLit(t.normalize, es.map(_.normalize))
       case OptionalFold => OptionalFold
-      case Record(mapping) => Record(mapping.mapValue(_.normalize))
-      case RecordLit(mapping) => RecordLit(mapping.mapValue(_.normalize))
-      case Union(mapping) => Union(mapping.mapValue(_.normalize))
-      case UnionLit(label, e, mapping) => UnionLit(label, e.normalize, mapping.mapValue(_.normalize))
+      case Record(mapping) => Record(mapping.mapValues(_.normalize))
+      case RecordLit(mapping) => RecordLit(mapping.mapValues(_.normalize))
+      case Union(mapping) => Union(mapping.mapValues(_.normalize))
+      case UnionLit(label, e, mapping) => UnionLit(label, e.normalize, mapping.mapValues(_.normalize))
       case Combine(e1, e2) => {
         def combine(e1: Expression[T, A], e2: Expression[T, A]): Expression[T, A] = (e1, e2) match {
-          case (RecordLit(mapping1), RecordLit(mapping2)) => RecordLit(mapping1.unionWith(combine(_, _), mapping2).mapValue(_.normalize))
+          case (RecordLit(mapping1), RecordLit(mapping2)) => RecordLit(mapping1.unionWith(combine(_, _), mapping2).mapValues(_.normalize))
           case (x, y) => Combine(x, y)
         }
         combine(e1.normalize, e2.normalize)
@@ -388,7 +388,7 @@ sealed trait Expression[+S, +A] extends Product with Serializable {
         }
       }
       case Field(record, name) => record.normalize match {
-        case RecordLit(fields) => fields.get(name).fold[Expression[T, A]](Field(RecordLit(fields.mapValue(_.normalize)), name))(_.normalize)
+        case RecordLit(fields) => fields.get(name).fold[Expression[T, A]](Field(RecordLit(fields.mapValues(_.normalize)), name))(_.normalize)
         case other => Field(other, name)
       }
       case Note(_, expr) => expr.normalize
