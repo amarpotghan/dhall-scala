@@ -1,17 +1,17 @@
 package dhall
 
-import dhall.Expr.{Embed, Lam, Let, ListLit, Quant, Union, UnionLit}
+import dhall.Expression.{Embed, Lam, Let, ListLit, Quant, Union, UnionLit}
 import org.parboiled2._
 
 import scala.util.Try
 
 class DhallParser private[dhall](val input: ParserInput) extends Parser {
 
-  def InputLine: Rule1[Expr[Nothing, Path]] = rule {
-    Expression ~ EOI
+  def InputLine: Rule1[Expression[Nothing, Path]] = rule {
+    ExpressionRule ~ EOI
   }
 
-  def Expression: Rule1[Expr[Nothing, Path]] = rule {
+  def ExpressionRule: Rule1[Expression[Nothing, Path]] = rule {
     EnvExpression |
     UrlExpression |
     FileExpression |
@@ -36,40 +36,40 @@ class DhallParser private[dhall](val input: ParserInput) extends Parser {
   }
 
   def LambdaExpression: Rule1[Lam[Nothing, Path]] = rule {
-    (LambdaSymbol ~ ws("(") ~ capture(oneOrMore(Identifier)) ~ ws(":") ~ Expression ~ ws(")") ~ ArrowSymbol ~ Expression) ~>
-      ((label: String, domain: Expr[Nothing, Path], body: Expr[Nothing, Path]) => Lam(label, domain, body))
+    (LambdaSymbol ~ ws("(") ~ capture(oneOrMore(Identifier)) ~ ws(":") ~ ExpressionRule ~ ws(")") ~ ArrowSymbol ~ ExpressionRule) ~>
+      ((label: String, domain: Expression[Nothing, Path], body: Expression[Nothing, Path]) => Lam(label, domain, body))
   }
 
   def QuantExpression: Rule1[Quant[Nothing, Path]] = rule {
-    (QuantSymbol ~ ws("(") ~ capture(oneOrMore(Identifier)) ~ ws(":") ~ Expression ~ ws(")") ~ ArrowSymbol ~ Expression) ~>
-      ((label: String, domain: Expr[Nothing, Path], codomain: Expr[Nothing, Path]) => Quant(label, domain, codomain))
+    (QuantSymbol ~ ws("(") ~ capture(oneOrMore(Identifier)) ~ ws(":") ~ ExpressionRule ~ ws(")") ~ ArrowSymbol ~ ExpressionRule) ~>
+      ((label: String, domain: Expression[Nothing, Path], codomain: Expression[Nothing, Path]) => Quant(label, domain, codomain))
   }
 
   def LetExpression: Rule1[Let[Nothing, Path]] = rule {
-    (ws("let") ~ capture(oneOrMore(Identifier)) ~ optional(ws(":") ~ Expression) ~ ws("=") ~ Expression ~ ws("in") ~ Expression) ~>
-      ((label: String, typ: Option[Expr[Nothing, Path]], expr: Expr[Nothing, Path], body: Expr[Nothing, Path]) =>
+    (ws("let") ~ capture(oneOrMore(Identifier)) ~ optional(ws(":") ~ ExpressionRule) ~ ws("=") ~ ExpressionRule ~ ws("in") ~ ExpressionRule) ~>
+      ((label: String, typ: Option[Expression[Nothing, Path]], expr: Expression[Nothing, Path], body: Expression[Nothing, Path]) =>
         Let(label, typ, expr, body))
   }
 
   def ListLiteralExpression: Rule1[ListLit[Nothing, Path]] = rule {
-    (ws("[") ~ zeroOrMore(Expression).separatedBy(",") ~ ws("]")) ~> ((xs: Seq[Expr[Nothing, Path]]) => ListLit(None, xs))
+    (ws("[") ~ zeroOrMore(ExpressionRule).separatedBy(",") ~ ws("]")) ~> ((xs: Seq[Expression[Nothing, Path]]) => ListLit(None, xs))
   }
 
-  def AlternativeType: Rule1[(String, Expr[Nothing, Path])] = rule {
-    (capture(oneOrMore(Identifier)) ~ ws(":") ~ Expression) ~> ((k: String, v: Expr[Nothing, Path]) => (k, v))
+  def AlternativeType: Rule1[(String, Expression[Nothing, Path])] = rule {
+    (capture(oneOrMore(Identifier)) ~ ws(":") ~ ExpressionRule) ~> ((k: String, v: Expression[Nothing, Path]) => (k, v))
   }
 
-  def AlternativeTypes: Rule1[Map[String, Expr[Nothing, Path]]] = rule {
-    zeroOrMore(AlternativeType).separatedBy(ws("|")) ~> ((xs: Seq[(String, Expr[Nothing, Path])]) => xs.toMap)
+  def AlternativeTypes: Rule1[Map[String, Expression[Nothing, Path]]] = rule {
+    zeroOrMore(AlternativeType).separatedBy(ws("|")) ~> ((xs: Seq[(String, Expression[Nothing, Path])]) => xs.toMap)
   }
 
   def UnionExpression: Rule1[Union[Nothing, Path]] = rule {
-    (ws("<") ~ AlternativeTypes ~ ws(">")) ~> (Union(_: Map[String, Expr[Nothing, Path]]))
+    (ws("<") ~ AlternativeTypes ~ ws(">")) ~> (Union(_: Map[String, Expression[Nothing, Path]]))
   }
 
   def UnionLiteralExpression: Rule1[UnionLit[Nothing, Path]] = rule {
-    (ws("<") ~ capture(oneOrMore(Identifier)) ~ ws("=") ~ Expression ~ optional(ws("|") ~ AlternativeTypes) ~ ws(">")) ~>
-      ((label: String, expr: Expr[Nothing, Path], map: Option[Map[String, Expr[Nothing, Path]]]) =>
+    (ws("<") ~ capture(oneOrMore(Identifier)) ~ ws("=") ~ ExpressionRule ~ optional(ws("|") ~ AlternativeTypes) ~ ws(">")) ~>
+      ((label: String, expr: Expression[Nothing, Path], map: Option[Map[String, Expression[Nothing, Path]]]) =>
         UnionLit(label, expr, map.getOrElse(Map.empty)))
   }
 
@@ -99,7 +99,7 @@ class DhallParser private[dhall](val input: ParserInput) extends Parser {
 }
 
 object DhallParser {
-  def parse(input: String): Try[Expr[Nothing, Path]] = {
+  def parse(input: String): Try[Expression[Nothing, Path]] = {
     new DhallParser(input).InputLine.run()
   }
 }

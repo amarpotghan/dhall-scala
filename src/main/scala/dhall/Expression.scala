@@ -7,11 +7,11 @@ import scala.util.Try
 import dhall.utilities.TypeLevelFunctions.Partial2
 import dhall.utilities.MapFunctions.RichMap
 
-sealed trait Expr[+S, +A] extends Product with Serializable {
-  import Expr._
-  def map[B](f: A => B): Expr[S, B] = flatMap(a => Embed(f(a)))
-  def ap[SS >: S, B](f: Expr[SS, A => B]): Expr[SS, B] = f.flatMap(map)
-  def leftMap[T](f: S => T): Expr[T, A] = this match {
+sealed trait Expression[+S, +A] extends Product with Serializable {
+  import Expression._
+  def map[B](f: A => B): Expression[S, B] = flatMap(a => Embed(f(a)))
+  def ap[SS >: S, B](f: Expression[SS, A => B]): Expression[SS, B] = f.flatMap(map)
+  def leftMap[T](f: S => T): Expression[T, A] = this match {
     case constant: Const => constant
     case variable: Var => variable
     case Lam(label, typ, body) => Lam(label, typ.leftMap(f), body.leftMap(f))
@@ -65,7 +65,7 @@ sealed trait Expr[+S, +A] extends Product with Serializable {
     case Embed(a) => Embed(a)
   }
 
-  def flatMap[SS >: S, B](f: A => Expr[SS, B]): Expr[SS, B] = this match {
+  def flatMap[SS >: S, B](f: A => Expression[SS, B]): Expression[SS, B] = this match {
     case constant: Const => constant
     case variable: Var => variable
     case Lam(label, typ, body) => Lam(label, typ.flatMap(f), body.flatMap(f))
@@ -120,9 +120,9 @@ sealed trait Expr[+S, +A] extends Product with Serializable {
   }
 
   // N.B. - This method is not stack safe
-  def shiftVariableIndices[T](by: Int, variable: Var): Expr[T, A] = {
-    def shift[X, Y, Z]: Expr[X, Z] => Expr[Y, Z] = _.shiftVariableIndices(by, variable)
-    def withAdjustedIndex(label: String, expr: Expr[S, A]): Expr[T, A] = {
+  def shiftVariableIndices[T](by: Int, variable: Var): Expression[T, A] = {
+    def shift[X, Y, Z]: Expression[X, Z] => Expression[Y, Z] = _.shiftVariableIndices(by, variable)
+    def withAdjustedIndex(label: String, expr: Expression[S, A]): Expression[T, A] = {
       val adjustedIndex = if(variable.label == label) variable.index + 1 else variable.index
       expr.shiftVariableIndices(by, variable.copy(index = adjustedIndex))
     }
@@ -185,9 +185,9 @@ sealed trait Expr[+S, +A] extends Product with Serializable {
   }
 
   // N.B. - This method is not stack safe
-  def substitute[T, AA >: A](variable: Var, by: Expr[T, AA]): Expr[T, AA] = {
-    def subst: Expr[S, AA] => Expr[T, AA] = _.substitute(variable, by)
-    def withShift(label: String, expr: Expr[S, AA]): Expr[T, AA] = {
+  def substitute[T, AA >: A](variable: Var, by: Expression[T, AA]): Expression[T, AA] = {
+    def subst: Expression[S, AA] => Expression[T, AA] = _.substitute(variable, by)
+    def withShift(label: String, expr: Expression[S, AA]): Expression[T, AA] = {
       val shifted = if(variable.label == label) variable.index + 1 else variable.index
       expr.substitute(variable.copy(index = shifted), by.shiftVariableIndices(1, Var(label, 0)))
     }
@@ -248,7 +248,7 @@ sealed trait Expr[+S, +A] extends Product with Serializable {
   }
 
   // N.B. - This method is not stack safe
-  def normalize[T]: Expr[T, A] = {
+  def normalize[T]: Expression[T, A] = {
     this match {
       case const: Const => const
       case variable: Var => variable
@@ -268,8 +268,8 @@ sealed trait Expr[+S, +A] extends Product with Serializable {
             case (App(App(App(NaturalFold, (NaturalLit(n))), t), f), empty) => (1 to n).foldRight(empty)((_, acc) => App(f, acc)).normalize
             case (NaturalBuild, v) => {
               val withLabels = App(App(App(v, NaturalType), Var("Succ", 0)), Var("Zero", 0)).normalize
-              def normalized(e: Expr[S, A]): Boolean = Try(result(0, e)).toOption.fold[Boolean](false)(_ => true)
-              def result(n: Int, e: Expr[S, A]): Int = e match {
+              def normalized(e: Expression[S, A]): Boolean = Try(result(0, e)).toOption.fold[Boolean](false)(_ => true)
+              def result(n: Int, e: Expression[S, A]): Int = e match {
                 case App(Var("Succ", _), next) => result(n + 1, next)
                 case Var("Zero", _) => n
                 case _ => throw CompilerBug.NormalizerBug(s"${this.toString}.normalize")
@@ -282,9 +282,9 @@ sealed trait Expr[+S, +A] extends Product with Serializable {
             case (App(ListBuild, t), v) => {
               // We first label the church encoded list using "Cons" and "Nil" variables
               val withLabels = App(App(App(v, App(ListType, t)), Var("Cons", 0)), Var("Nil", 0)).normalize
-              def normalized(e: Expr[S, A]): Boolean = Try(result(Nil, e)).toOption.fold[Boolean](false)(_ => true)
+              def normalized(e: Expression[S, A]): Boolean = Try(result(Nil, e)).toOption.fold[Boolean](false)(_ => true)
               // we fold over the labeled church encoded list and create a Scala List
-              def result[Tag, V](acc: List[Expr[Tag, V]], e: Expr[Tag, V]): List[Expr[Tag, V]] = e match {
+              def result[Tag, V](acc: List[Expression[Tag, V]], e: Expression[Tag, V]): List[Expression[Tag, V]] = e match {
                 case App(App(Var("Cons", _), h), next) => result(h :: acc, next)
                 case Var("Nil", _) => acc
                 case _ => throw CompilerBug.NormalizerBug(s"${this.toString}.normalize")
@@ -371,7 +371,7 @@ sealed trait Expr[+S, +A] extends Product with Serializable {
       case Union(mapping) => Union(mapping.mapValue(_.normalize))
       case UnionLit(label, e, mapping) => UnionLit(label, e.normalize, mapping.mapValue(_.normalize))
       case Combine(e1, e2) => {
-        def combine(e1: Expr[T, A], e2: Expr[T, A]): Expr[T, A] = (e1, e2) match {
+        def combine(e1: Expression[T, A], e2: Expression[T, A]): Expression[T, A] = (e1, e2) match {
           case (RecordLit(mapping1), RecordLit(mapping2)) => RecordLit(mapping1.unionWith(combine(_, _), mapping2).mapValue(_.normalize))
           case (x, y) => Combine(x, y)
         }
@@ -382,13 +382,13 @@ sealed trait Expr[+S, +A] extends Product with Serializable {
         val e2Normalized = e2.normalize
         (e1Normalized, e2Normalized) match {
           case (RecordLit(mapping), UnionLit(ks, vs, _)) => {
-            mapping.get(ks).fold[Expr[T, A]](Merge(e1Normalized, e2Normalized, e3.normalize))(r => App(r, vs).normalize)
+            mapping.get(ks).fold[Expression[T, A]](Merge(e1Normalized, e2Normalized, e3.normalize))(r => App(r, vs).normalize)
           }
           case (x, y) => Merge(x, y, e3.normalize)
         }
       }
       case Field(record, name) => record.normalize match {
-        case RecordLit(fields) => fields.get(name).fold[Expr[T, A]](Field(RecordLit(fields.mapValue(_.normalize)), name))(_.normalize)
+        case RecordLit(fields) => fields.get(name).fold[Expression[T, A]](Field(RecordLit(fields.mapValue(_.normalize)), name))(_.normalize)
         case other => Field(other, name)
       }
       case Note(_, expr) => expr.normalize
@@ -398,74 +398,74 @@ sealed trait Expr[+S, +A] extends Product with Serializable {
 }
 
 
-object Expr extends ExprInstances {
-  sealed trait Const extends Expr[Nothing, Nothing]
+object Expression extends ExpressionInstances {
+  sealed trait Const extends Expression[Nothing, Nothing]
   object Const {
    case object Type extends Const
    case object Kind extends Const
   }
 
-  case class Var(label: String, index: Int) extends Expr[Nothing, Nothing]
-  case class Lam[+S, +A](domainLabel: String, domain: Expr[S, A], body: Expr[S, A]) extends Expr[S, A]
-  case class Quant[+S, +A](domainLabel: String, domain: Expr[S, A], codomain: Expr[S, A]) extends Expr[S, A]
-  case class App[+S, +A](function: Expr[S, A], value: Expr[S, A]) extends Expr[S, A]
-  case class Let[+S, +A](label: String, typ: Option[Expr[S, A]], expr: Expr[S, A], body: Expr[S, A]) extends Expr[S, A]
-  case class Annot[+S, +A](e1: Expr[S, A], e2: Expr[S, A]) extends Expr[S, A]
+  case class Var(label: String, index: Int) extends Expression[Nothing, Nothing]
+  case class Lam[+S, +A](domainLabel: String, domain: Expression[S, A], body: Expression[S, A]) extends Expression[S, A]
+  case class Quant[+S, +A](domainLabel: String, domain: Expression[S, A], codomain: Expression[S, A]) extends Expression[S, A]
+  case class App[+S, +A](function: Expression[S, A], value: Expression[S, A]) extends Expression[S, A]
+  case class Let[+S, +A](label: String, typ: Option[Expression[S, A]], expr: Expression[S, A], body: Expression[S, A]) extends Expression[S, A]
+  case class Annot[+S, +A](e1: Expression[S, A], e2: Expression[S, A]) extends Expression[S, A]
 
-  case object BoolType extends Expr[Nothing, Nothing]
-  case class BoolLit(value: Boolean) extends Expr[Nothing, Nothing]
-  case class BoolAnd[+S, +A](e1: Expr[S, A], e2: Expr[S, A]) extends Expr[S, A]
-  case class BoolOr[+S, +A](e1: Expr[S, A], e2: Expr[S, A]) extends Expr[S, A]
-  case class BoolEQ[+S, +A](e1: Expr[S, A], e2: Expr[S, A]) extends Expr[S, A]
-  case class BoolNE[+S, +A](e1: Expr[S, A], e2: Expr[S, A]) extends Expr[S, A]
-  case class BoolIf[+S, +A](ifPart: Expr[S, A], thenPart: Expr[S, A], elsePart: Expr[S, A]) extends Expr[S, A]
+  case object BoolType extends Expression[Nothing, Nothing]
+  case class BoolLit(value: Boolean) extends Expression[Nothing, Nothing]
+  case class BoolAnd[+S, +A](e1: Expression[S, A], e2: Expression[S, A]) extends Expression[S, A]
+  case class BoolOr[+S, +A](e1: Expression[S, A], e2: Expression[S, A]) extends Expression[S, A]
+  case class BoolEQ[+S, +A](e1: Expression[S, A], e2: Expression[S, A]) extends Expression[S, A]
+  case class BoolNE[+S, +A](e1: Expression[S, A], e2: Expression[S, A]) extends Expression[S, A]
+  case class BoolIf[+S, +A](ifPart: Expression[S, A], thenPart: Expression[S, A], elsePart: Expression[S, A]) extends Expression[S, A]
 
-  case object NaturalType extends Expr[Nothing, Nothing]
+  case object NaturalType extends Expression[Nothing, Nothing]
   //TODO: use correct Natural type instead of Int
-  case class NaturalLit(value: Int) extends Expr[Nothing, Nothing]
-  case object NaturalFold extends Expr[Nothing, Nothing]
-  case object NaturalBuild extends Expr[Nothing, Nothing]
-  case object NaturalIsZero extends Expr[Nothing, Nothing]
-  case object NaturalEven extends Expr[Nothing, Nothing]
-  case object NaturalOdd extends Expr[Nothing, Nothing]
-  case class NaturalPlus[+S, +A](e1: Expr[S, A], e2: Expr[S, A]) extends Expr[S, A]
-  case class NaturalTimes[+S, +A](e1: Expr[S, A], e2: Expr[S, A]) extends Expr[S, A]
+  case class NaturalLit(value: Int) extends Expression[Nothing, Nothing]
+  case object NaturalFold extends Expression[Nothing, Nothing]
+  case object NaturalBuild extends Expression[Nothing, Nothing]
+  case object NaturalIsZero extends Expression[Nothing, Nothing]
+  case object NaturalEven extends Expression[Nothing, Nothing]
+  case object NaturalOdd extends Expression[Nothing, Nothing]
+  case class NaturalPlus[+S, +A](e1: Expression[S, A], e2: Expression[S, A]) extends Expression[S, A]
+  case class NaturalTimes[+S, +A](e1: Expression[S, A], e2: Expression[S, A]) extends Expression[S, A]
 
-  case object IntegerType extends Expr[Nothing, Nothing]
-  case class IntegerLit(value: Int) extends Expr[Nothing, Nothing]
+  case object IntegerType extends Expression[Nothing, Nothing]
+  case class IntegerLit(value: Int) extends Expression[Nothing, Nothing]
 
-  case object DoubleType extends Expr[Nothing, Nothing]
-  case class DoubleLit(value: Double) extends Expr[Nothing, Nothing]
+  case object DoubleType extends Expression[Nothing, Nothing]
+  case class DoubleLit(value: Double) extends Expression[Nothing, Nothing]
 
-  case object StringType extends Expr[Nothing, Nothing]
-  case class StringLit(value: String) extends Expr[Nothing, Nothing]
-  case class StringAppend[+S, +A](e1: Expr[S, A], e2: Expr[S, A]) extends Expr[S, A]
+  case object StringType extends Expression[Nothing, Nothing]
+  case class StringLit(value: String) extends Expression[Nothing, Nothing]
+  case class StringAppend[+S, +A](e1: Expression[S, A], e2: Expression[S, A]) extends Expression[S, A]
 
-  case object ListType extends Expr[Nothing, Nothing]
-  case class ListLit[+S, +A](typeParam: Option[Expr[S, A]], value: Seq[Expr[S, A]]) extends Expr[S, A]
-  case object ListBuild extends Expr[Nothing, Nothing]
-  case object ListFold extends Expr[Nothing, Nothing]
-  case object ListLength extends Expr[Nothing, Nothing]
-  case object ListHead extends Expr[Nothing, Nothing]
-  case object ListLast extends Expr[Nothing, Nothing]
-  case object ListIndexed extends Expr[Nothing, Nothing]
-  case object ListReverse extends Expr[Nothing, Nothing]
+  case object ListType extends Expression[Nothing, Nothing]
+  case class ListLit[+S, +A](typeParam: Option[Expression[S, A]], value: Seq[Expression[S, A]]) extends Expression[S, A]
+  case object ListBuild extends Expression[Nothing, Nothing]
+  case object ListFold extends Expression[Nothing, Nothing]
+  case object ListLength extends Expression[Nothing, Nothing]
+  case object ListHead extends Expression[Nothing, Nothing]
+  case object ListLast extends Expression[Nothing, Nothing]
+  case object ListIndexed extends Expression[Nothing, Nothing]
+  case object ListReverse extends Expression[Nothing, Nothing]
 
-  case object OptionalType extends Expr[Nothing, Nothing]
-  case class OptionalLit[+S, +A](typeParam: Expr[S, A], value: Seq[Expr[S, A]]) extends Expr[S, A]
-  case object OptionalFold extends Expr[Nothing, Nothing]
+  case object OptionalType extends Expression[Nothing, Nothing]
+  case class OptionalLit[+S, +A](typeParam: Expression[S, A], value: Seq[Expression[S, A]]) extends Expression[S, A]
+  case object OptionalFold extends Expression[Nothing, Nothing]
 
-  case class Record[+S, +A](mapping: Map[String, Expr[S, A]]) extends Expr[S, A]
-  case class RecordLit[+S, +A](mapping: Map[String, Expr[S, A]]) extends Expr[S, A]
+  case class Record[+S, +A](mapping: Map[String, Expression[S, A]]) extends Expression[S, A]
+  case class RecordLit[+S, +A](mapping: Map[String, Expression[S, A]]) extends Expression[S, A]
 
-  case class Union[+S, +A](mapping: Map[String, Expr[S, A]]) extends Expr[S, A]
-  case class UnionLit[+S, +A](t: String, e: Expr[S, A], m: Map[String, Expr[S, A]]) extends Expr[S, A]
+  case class Union[+S, +A](mapping: Map[String, Expression[S, A]]) extends Expression[S, A]
+  case class UnionLit[+S, +A](t: String, e: Expression[S, A], m: Map[String, Expression[S, A]]) extends Expression[S, A]
 
-  case class Combine[+S, +A](e1: Expr[S, A], e2: Expr[S, A]) extends Expr[S, A]
-  case class Merge[+S, +A](e1: Expr[S, A], e2: Expr[S, A], typ: Expr[S, A]) extends Expr[S, A]
-  case class Field[+S, +A](record: Expr[S, A], name: String) extends Expr[S, A]
-  case class Note[+S, +A](tag: S, e: Expr[S, A]) extends Expr[S, A]
-  case class Embed[+A](value: A) extends Expr[Nothing, A]
+  case class Combine[+S, +A](e1: Expression[S, A], e2: Expression[S, A]) extends Expression[S, A]
+  case class Merge[+S, +A](e1: Expression[S, A], e2: Expression[S, A], typ: Expression[S, A]) extends Expression[S, A]
+  case class Field[+S, +A](record: Expression[S, A], name: String) extends Expression[S, A]
+  case class Note[+S, +A](tag: S, e: Expression[S, A]) extends Expression[S, A]
+  case class Embed[+A](value: A) extends Expression[Nothing, A]
 
   // TODO: Improve error message
   sealed abstract class CompilerBug(msg: String) extends RuntimeException(msg)
@@ -474,25 +474,25 @@ object Expr extends ExprInstances {
   }
 }
 
-private[dhall] sealed trait ExprInstances {
-  import Expr.Embed
+private[dhall] sealed trait ExpressionInstances {
+  import Expression.Embed
 
-  implicit def exprMonad[S] = new Monad[Partial2[Expr, S]#Apply] {
-    override def map[A, B](fa: Expr[S, A])(f: A => B): Expr[S, B] =
+  implicit def exprMonad[S] = new Monad[Partial2[Expression, S]#Apply] {
+    override def map[A, B](fa: Expression[S, A])(f: A => B): Expression[S, B] =
       fa.map(f)
 
-    def pure[A](x: A): Expr[S, A] = Embed(x)
+    def pure[A](x: A): Expression[S, A] = Embed(x)
 
-    def flatMap[A, B](fa: Expr[S, A])(f: A => Expr[S, B]): Expr[S, B] =
+    def flatMap[A, B](fa: Expression[S, A])(f: A => Expression[S, B]): Expression[S, B] =
       fa.flatMap(f)
 
     // TODO: This is not correct, not tailrec.
-    def tailRecM[A, B](a: A)(f: A => Expr[S, Either[A, B]]): Expr[S, B] =
+    def tailRecM[A, B](a: A)(f: A => Expression[S, Either[A, B]]): Expression[S, B] =
       f(a).flatMap(_.fold(tailRecM(_)(f), pure))
   }
 
-  implicit val exprBifunctor = new Bifunctor[Expr] {
-    def bimap[S, A, T, B](expr: Expr[S, A])(f: S => T, g: A => B): Expr[T, B] =
+  implicit val exprBifunctor = new Bifunctor[Expression] {
+    def bimap[S, A, T, B](expr: Expression[S, A])(f: S => T, g: A => B): Expression[T, B] =
       expr.map(g).leftMap(f)
   }
 }

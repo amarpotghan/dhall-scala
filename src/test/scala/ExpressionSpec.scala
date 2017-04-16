@@ -2,10 +2,9 @@ package dhall
 
 import org.specs2.mutable._
 
+import Expression._
 
-import Expr._
-
-class ExprSpec extends Specification {
+class ExpressionSpec extends Specification {
 
   "shiftVariableIndices: should shift index if provided variable name matches with, " >> {
     "Lam domain label" >> {
@@ -233,7 +232,7 @@ class ExprSpec extends Specification {
         }
 
         "OptionalFold" >> {
-          def foldApplication(value: Seq[Expr[String, Int]]) =
+          def foldApplication(value: Seq[Expression[String, Int]]) =
             App(
               App(
                 App(

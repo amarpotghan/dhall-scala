@@ -1,6 +1,6 @@
 package dhall
 
-import dhall.Expr.{Embed, Lam, Let, ListLit, Quant, Union, UnionLit}
+import dhall.Expression.{Embed, Lam, Let, ListLit, Quant, Union, UnionLit}
 import org.specs2.matcher.Matchers
 import org.specs2.mutable.Specification
 
