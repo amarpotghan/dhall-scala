@@ -27,11 +27,10 @@ class ExpressionSpec extends Specification {
       shifted mustEqual Variable("x", 1)
     }
 
-    "Quant label" >> {
-      // forall(a: Int) -> a
-      val given = Quant("x", IntegerType, Variable("x", 0))
+    "Pi label" >> {
+      val given = Pi("x", IntegerType, Variable("x", 0))
       val shifted = given.shiftVariableIndices(1, Variable("x", 0))
-      shifted mustEqual Quant("x", IntegerType, Variable("x", 1))
+      shifted mustEqual Pi("x", IntegerType, Variable("x", 1))
     }
 
     "Var in Lam in Let" >> {
@@ -78,7 +77,7 @@ class ExpressionSpec extends Specification {
       }
 
       "Quant variable name" >> {
-        val given = Quant("x", Const.Type, Variable("x", 0))
+        val given = Pi("x", Const.Type, Variable("x", 0))
         val substituted = given.substitute(Variable("x", 0), Variable("y", 0))
         substituted mustEqual given
       }
@@ -144,8 +143,8 @@ class ExpressionSpec extends Specification {
               App(ListBuild, NaturalType),
               Lambda("l", Const.Type,
                   Lambda("cons",
-                      Quant("_", NaturalType,
-                            Quant("_", Variable("l", 0), Variable("l", 0))),
+                      Pi("_", NaturalType,
+                            Pi("_", Variable("l", 0), Variable("l", 0))),
                       Lambda("nil", Variable("l", 0),
                           App(App(Variable("cons", 0), NaturalLit(1)), Variable("nil", 0))))))
 
@@ -210,7 +209,7 @@ class ExpressionSpec extends Specification {
         "NaturalBuild" >> {
           val ls = App(NaturalBuild,
                        Lambda("natural", Const.Type,
-                           Lambda("succ", Quant("_", Variable("natural", 0), Variable("natural", 0)),
+                           Lambda("succ", Pi("_", Variable("natural", 0), Variable("natural", 0)),
                                Lambda("zero", Variable("natural", 0),
                                    App(Variable("succ", 0), App(Variable("succ", 0), App(Variable("succ", 0), App(Variable("succ", 0), Variable("zero", 0)))))))))
 

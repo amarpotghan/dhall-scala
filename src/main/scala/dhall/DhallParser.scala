@@ -1,6 +1,6 @@
 package dhall
 
-import dhall.Expression.{Embed, Lambda, Let, ListLit, Quant, Union, UnionLit}
+import dhall.Expression.{Embed, Lambda, Let, ListLit, Pi, Union, UnionLit}
 import org.parboiled2._
 
 import scala.util.Try
@@ -40,9 +40,9 @@ class DhallParser private[dhall](val input: ParserInput) extends Parser {
       ((label: String, domain: Expression[Nothing, Path], body: Expression[Nothing, Path]) => Lambda(label, domain, body))
   }
 
-  def QuantExpression: Rule1[Quant[Nothing, Path]] = rule {
+  def QuantExpression: Rule1[Pi[Nothing, Path]] = rule {
     (QuantSymbol ~ ws("(") ~ capture(oneOrMore(Identifier)) ~ ws(":") ~ ExpressionRule ~ ws(")") ~ ArrowSymbol ~ ExpressionRule) ~>
-      ((label: String, domain: Expression[Nothing, Path], codomain: Expression[Nothing, Path]) => Quant(label, domain, codomain))
+      ((label: String, domain: Expression[Nothing, Path], codomain: Expression[Nothing, Path]) => Pi(label, domain, codomain))
   }
 
   def LetExpression: Rule1[Let[Nothing, Path]] = rule {

@@ -15,14 +15,14 @@ sealed trait Expression[+S, +A] extends Product with Serializable {
     case constant: Const             => constant
     case variable: Variable          => variable
     case Lambda(label, typ, body)    => Lambda(label, typ.leftMap(f), body.leftMap(f))
-    case Quant(label, typ, body)     => Quant(label, typ.leftMap(f), body.leftMap(f))
+    case Pi(label, typ, body)        => Pi(label, typ.leftMap(f), body.leftMap(f))
     case App(function, value)        => App(function.leftMap(f), value.leftMap(f))
     case Let(label, typ, expr, body) => Let(label, typ.map(_.leftMap(f)), expr.leftMap(f), body.leftMap(f))
     case Annot(e1, e2)               => Annot(e1.leftMap(f), e2.leftMap(f))
     case BoolType                    => BoolType
     case boolLit: BoolLit            => boolLit
     case BoolAnd(e1, e2)             => BoolAnd(e1.leftMap(f), e2.leftMap(f))
-    case BoolOr(e1, e2) => BoolOr(e1.leftMap(f), e2.leftMap(f))
+    case BoolOr(e1, e2)              => BoolOr(e1.leftMap(f), e2.leftMap(f))
     case BoolEQ(e1, e2) => BoolEQ(e1.leftMap(f), e2.leftMap(f))
     case BoolNE(e1, e2) => BoolNE(e1.leftMap(f), e2.leftMap(f))
     case BoolIf(ifPart, thenPart, elsePart) => BoolIf(ifPart.leftMap(f), thenPart.leftMap(f), elsePart.leftMap(f))
@@ -69,14 +69,14 @@ sealed trait Expression[+S, +A] extends Product with Serializable {
     case constant: Const             => constant
     case variable: Variable          => variable
     case Lambda(label, typ, body)    => Lambda(label, typ.flatMap(f), body.flatMap(f))
-    case Quant(label, typ, body)     => Quant(label, typ.flatMap(f), body.flatMap(f))
+    case Pi(label, typ, body)        => Pi(label, typ.flatMap(f), body.flatMap(f))
     case App(function, value)        => App(function.flatMap(f), value.flatMap(f))
     case Let(label, typ, expr, body) => Let(label, typ.map(_.flatMap(f)), expr.flatMap(f), body.flatMap(f))
     case Annot(e1, e2)               => Annot(e1.flatMap(f), e2.flatMap(f))
     case BoolType                    => BoolType
     case boolLit: BoolLit            => boolLit
     case BoolAnd(e1, e2)             => BoolAnd(e1.flatMap(f), e2.flatMap(f))
-    case BoolOr(e1, e2) => BoolOr(e1.flatMap(f), e2.flatMap(f))
+    case BoolOr(e1, e2)              => BoolOr(e1.flatMap(f), e2.flatMap(f))
     case BoolEQ(e1, e2) => BoolEQ(e1.flatMap(f), e2.flatMap(f))
     case BoolNE(e1, e2) => BoolNE(e1.flatMap(f), e2.flatMap(f))
     case BoolIf(ifPart, thenPart, elsePart) => BoolIf(ifPart.flatMap(f), thenPart.flatMap(f), elsePart.flatMap(f))
@@ -133,13 +133,13 @@ sealed trait Expression[+S, +A] extends Product with Serializable {
         Variable(name, newIndex)
       }
       case Lambda(domainName, typeExpr, bodyExpr) => Lambda(domainName, shift(typeExpr), withAdjustedIndex(domainName, bodyExpr))
-      case Quant(domainName, typeExpr, bodyExpr)  => Quant(domainName, shift(typeExpr), withAdjustedIndex(domainName, bodyExpr))
+      case Pi(domainName, typeExpr, bodyExpr)     => Pi(domainName, shift(typeExpr), withAdjustedIndex(domainName, bodyExpr))
       case App(function, value)                   => App(shift(function), shift(value))
       case Let(label, typExprOpt, expr, bodyExpr) => Let(label, typExprOpt.map(shift), shift(expr), withAdjustedIndex(label, bodyExpr))
       case Annot(value, typ)                      => Annot(shift(value), shift(typ))
-      case BoolType => BoolType
-      case boolLit: BoolLit => boolLit
-      case BoolAnd(e1, e2) => BoolAnd(shift(e1), shift(e2))
+      case BoolType                               => BoolType
+      case boolLit: BoolLit                       => boolLit
+      case BoolAnd(e1, e2)                        => BoolAnd(shift(e1), shift(e2))
       case BoolOr(e1, e2) => BoolOr(shift(e1), shift(e2))
       case BoolEQ(e1, e2) => BoolEQ(shift(e1), shift(e2))
       case BoolNE(e1, e2) => BoolNE(shift(e1), shift(e2))
@@ -195,7 +195,7 @@ sealed trait Expression[+S, +A] extends Product with Serializable {
     this match {
       case const: Const                                => const
       case Lambda(label, typExpr, bodyExpr)            => Lambda(label, subst(typExpr), withShift(label, bodyExpr))
-      case Quant(label, typeExpr, bodyExpr)            => Quant(label, subst(typeExpr), withShift(label, bodyExpr))
+      case Pi(label, typeExpr, bodyExpr)               => Pi(label, subst(typeExpr), withShift(label, bodyExpr))
       case App(function, value)                        => App(subst(function), subst(value))
       case Let(label, typExprOpt, valueExpr, bodyExpr) => Let(label, typExprOpt.map(subst), subst(valueExpr), withShift(label, bodyExpr))
       case v: Variable                                 => if(v == variable) by else v
@@ -253,7 +253,7 @@ sealed trait Expression[+S, +A] extends Product with Serializable {
       case const: Const                     => const
       case variable: Variable               => variable
       case Lambda(label, typExpr, bodyExpr) => Lambda(label, typExpr.normalize, bodyExpr.normalize)
-      case Quant(label, domain, codomain)   => Quant(label, domain.normalize, codomain.normalize)
+      case Pi(label, domain, codomain)      => Pi(label, domain.normalize, codomain.normalize)
       case App(function, arg)               => {
         function.normalize match {
           // normalize ((\x -> f x) a) => normalize (f a)
@@ -422,7 +422,17 @@ object Expression extends ExpressionInstances {
   //   Lambda(x, A, b)
   case class Lambda[+S, +A](domainLabel: String, domain: Expression[S, A], body: Expression[S, A]) extends Expression[S, A]
 
-  case class Quant[+S, +A](domainLabel: String, domain: Expression[S, A], codomain: Expression[S, A]) extends Expression[S, A]
+  // Syntax:
+  //   A -> B
+  // translates to:
+  //   Pi("_", A, B)
+  //
+  // Syntax:
+  //   ∀(x : A) -> B
+  // translates to:
+  //   Pi(x, A, B)
+  case class Pi[+S, +A](domainLabel: String, domain: Expression[S, A], codomain: Expression[S, A]) extends Expression[S, A]
+
   case class App[+S, +A](function: Expression[S, A], value: Expression[S, A]) extends Expression[S, A]
   case class Let[+S, +A](label: String, typ: Option[Expression[S, A]], expr: Expression[S, A], body: Expression[S, A]) extends Expression[S, A]
   case class Annot[+S, +A](e1: Expression[S, A], e2: Expression[S, A]) extends Expression[S, A]
