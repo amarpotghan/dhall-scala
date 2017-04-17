@@ -406,9 +406,14 @@ object Expression extends ExpressionInstances {
   }
 
   // Syntax:
-  //   label
-  // or:
-  //   label@index
+  //   x
+  // translates to:
+  //   Variable(x, 0)
+  //
+  // Syntax:
+  //   x@n
+  // translates to:
+  //   Variable(x, n)
   case class Variable(symbol: String, index: Int) extends Expression[Nothing, Nothing]
 
   // Syntax:
