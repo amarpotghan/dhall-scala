@@ -14,7 +14,7 @@ sealed trait Expression[+S, +A] extends Product with Serializable {
   def leftMap[T](f: S => T): Expression[T, A] = this match {
     case constant: Const             => constant
     case variable: Variable          => variable
-    case Lam(label, typ, body)       => Lam(label, typ.leftMap(f), body.leftMap(f))
+    case Lambda(label, typ, body)    => Lambda(label, typ.leftMap(f), body.leftMap(f))
     case Quant(label, typ, body)     => Quant(label, typ.leftMap(f), body.leftMap(f))
     case App(function, value)        => App(function.leftMap(f), value.leftMap(f))
     case Let(label, typ, expr, body) => Let(label, typ.map(_.leftMap(f)), expr.leftMap(f), body.leftMap(f))
@@ -68,7 +68,7 @@ sealed trait Expression[+S, +A] extends Product with Serializable {
   def flatMap[SS >: S, B](f: A => Expression[SS, B]): Expression[SS, B] = this match {
     case constant: Const             => constant
     case variable: Variable          => variable
-    case Lam(label, typ, body)       => Lam(label, typ.flatMap(f), body.flatMap(f))
+    case Lambda(label, typ, body)    => Lambda(label, typ.flatMap(f), body.flatMap(f))
     case Quant(label, typ, body)     => Quant(label, typ.flatMap(f), body.flatMap(f))
     case App(function, value)        => App(function.flatMap(f), value.flatMap(f))
     case Let(label, typ, expr, body) => Let(label, typ.map(_.flatMap(f)), expr.flatMap(f), body.flatMap(f))
@@ -132,7 +132,7 @@ sealed trait Expression[+S, +A] extends Product with Serializable {
         val newIndex = if(name == variable.symbol && currentIndex <= variable.index) currentIndex + by else currentIndex
         Variable(name, newIndex)
       }
-      case Lam(domainName, typeExpr, bodyExpr)    => Lam(domainName, shift(typeExpr), withAdjustedIndex(domainName, bodyExpr))
+      case Lambda(domainName, typeExpr, bodyExpr) => Lambda(domainName, shift(typeExpr), withAdjustedIndex(domainName, bodyExpr))
       case Quant(domainName, typeExpr, bodyExpr)  => Quant(domainName, shift(typeExpr), withAdjustedIndex(domainName, bodyExpr))
       case App(function, value)                   => App(shift(function), shift(value))
       case Let(label, typExprOpt, expr, bodyExpr) => Let(label, typExprOpt.map(shift), shift(expr), withAdjustedIndex(label, bodyExpr))
@@ -194,7 +194,7 @@ sealed trait Expression[+S, +A] extends Product with Serializable {
 
     this match {
       case const: Const                                => const
-      case Lam(label, typExpr, bodyExpr)               => Lam(label, subst(typExpr), withShift(label, bodyExpr))
+      case Lambda(label, typExpr, bodyExpr)            => Lambda(label, subst(typExpr), withShift(label, bodyExpr))
       case Quant(label, typeExpr, bodyExpr)            => Quant(label, subst(typeExpr), withShift(label, bodyExpr))
       case App(function, value)                        => App(subst(function), subst(value))
       case Let(label, typExprOpt, valueExpr, bodyExpr) => Let(label, typExprOpt.map(subst), subst(valueExpr), withShift(label, bodyExpr))
@@ -250,15 +250,15 @@ sealed trait Expression[+S, +A] extends Product with Serializable {
   // N.B. - This method is not stack safe
   def normalize[T]: Expression[T, A] = {
     this match {
-      case const: Const                   => const
-      case variable: Variable             => variable
-      case Lam(label, typExpr, bodyExpr)  => Lam(label, typExpr.normalize, bodyExpr.normalize)
-      case Quant(label, domain, codomain) => Quant(label, domain.normalize, codomain.normalize)
-      case App(function, arg)             => {
+      case const: Const                     => const
+      case variable: Variable               => variable
+      case Lambda(label, typExpr, bodyExpr) => Lambda(label, typExpr.normalize, bodyExpr.normalize)
+      case Quant(label, domain, codomain)   => Quant(label, domain.normalize, codomain.normalize)
+      case App(function, arg)               => {
         function.normalize match {
           // normalize ((\x -> f x) a) => normalize (f a)
-          case Lam(label, typExpr, bodyExpr) => bodyExpr.substitute(Variable(label, 0), arg.shiftVariableIndices(1, Variable(label, 0))).shiftVariableIndices(-1, Variable(label, 0)).normalize
-          case normalizedFunction => (normalizedFunction, arg.normalize) match {
+          case Lambda(label, typExpr, bodyExpr) => bodyExpr.substitute(Variable(label, 0), arg.shiftVariableIndices(1, Variable(label, 0))).shiftVariableIndices(-1, Variable(label, 0)).normalize
+          case normalizedFunction               => (normalizedFunction, arg.normalize) match {
             // normalize (List/build t ((List/fold t) e)) = normalize e
             case (App(ListBuild, _), App(App(ListFold, _), argument)) => argument.normalize
             case (App(ListFold, _), App(App(ListBuild, _), argument)) => argument.normalize
@@ -419,8 +419,9 @@ object Expression extends ExpressionInstances {
   // Syntax:
   //   λ(x : A) -> b
   // translates to:
-  //   Lam(x, A, b)
-  case class Lam[+S, +A](domainLabel: String, domain: Expression[S, A], body: Expression[S, A]) extends Expression[S, A]
+  //   Lambda(x, A, b)
+  case class Lambda[+S, +A](domainLabel: String, domain: Expression[S, A], body: Expression[S, A]) extends Expression[S, A]
+
   case class Quant[+S, +A](domainLabel: String, domain: Expression[S, A], codomain: Expression[S, A]) extends Expression[S, A]
   case class App[+S, +A](function: Expression[S, A], value: Expression[S, A]) extends Expression[S, A]
   case class Let[+S, +A](label: String, typ: Option[Expression[S, A]], expr: Expression[S, A], body: Expression[S, A]) extends Expression[S, A]
