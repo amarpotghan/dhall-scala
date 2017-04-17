@@ -12,18 +12,18 @@ sealed trait Expression[+S, +A] extends Product with Serializable {
   def map[B](f: A => B): Expression[S, B] = flatMap(a => Embed(f(a)))
   def ap[SS >: S, B](f: Expression[SS, A => B]): Expression[SS, B] = f.flatMap(map)
   def leftMap[T](f: S => T): Expression[T, A] = this match {
-    case constant: Const             => constant
-    case variable: Variable          => variable
-    case Lambda(label, typ, body)    => Lambda(label, typ.leftMap(f), body.leftMap(f))
-    case Pi(label, typ, body)        => Pi(label, typ.leftMap(f), body.leftMap(f))
-    case App(function, value)        => App(function.leftMap(f), value.leftMap(f))
-    case Let(label, typ, expr, body) => Let(label, typ.map(_.leftMap(f)), expr.leftMap(f), body.leftMap(f))
-    case Annot(e1, e2)               => Annot(e1.leftMap(f), e2.leftMap(f))
-    case BoolType                    => BoolType
-    case boolLit: BoolLit            => boolLit
-    case BoolAnd(e1, e2)             => BoolAnd(e1.leftMap(f), e2.leftMap(f))
-    case BoolOr(e1, e2)              => BoolOr(e1.leftMap(f), e2.leftMap(f))
-    case BoolEQ(e1, e2) => BoolEQ(e1.leftMap(f), e2.leftMap(f))
+    case constant: Const              => constant
+    case variable: Variable           => variable
+    case Lambda(label, typ, body)     => Lambda(label, typ.leftMap(f), body.leftMap(f))
+    case Pi(label, typ, body)         => Pi(label, typ.leftMap(f), body.leftMap(f))
+    case Application(function, value) => Application(function.leftMap(f), value.leftMap(f))
+    case Let(label, typ, expr, body)  => Let(label, typ.map(_.leftMap(f)), expr.leftMap(f), body.leftMap(f))
+    case Annot(e1, e2)                => Annot(e1.leftMap(f), e2.leftMap(f))
+    case BoolType                     => BoolType
+    case boolLit: BoolLit             => boolLit
+    case BoolAnd(e1, e2)              => BoolAnd(e1.leftMap(f), e2.leftMap(f))
+    case BoolOr(e1, e2)               => BoolOr(e1.leftMap(f), e2.leftMap(f))
+    case BoolEQ(e1, e2)               => BoolEQ(e1.leftMap(f), e2.leftMap(f))
     case BoolNE(e1, e2) => BoolNE(e1.leftMap(f), e2.leftMap(f))
     case BoolIf(ifPart, thenPart, elsePart) => BoolIf(ifPart.leftMap(f), thenPart.leftMap(f), elsePart.leftMap(f))
     case NaturalType => NaturalType
@@ -66,18 +66,18 @@ sealed trait Expression[+S, +A] extends Product with Serializable {
   }
 
   def flatMap[SS >: S, B](f: A => Expression[SS, B]): Expression[SS, B] = this match {
-    case constant: Const             => constant
-    case variable: Variable          => variable
-    case Lambda(label, typ, body)    => Lambda(label, typ.flatMap(f), body.flatMap(f))
-    case Pi(label, typ, body)        => Pi(label, typ.flatMap(f), body.flatMap(f))
-    case App(function, value)        => App(function.flatMap(f), value.flatMap(f))
-    case Let(label, typ, expr, body) => Let(label, typ.map(_.flatMap(f)), expr.flatMap(f), body.flatMap(f))
-    case Annot(e1, e2)               => Annot(e1.flatMap(f), e2.flatMap(f))
-    case BoolType                    => BoolType
-    case boolLit: BoolLit            => boolLit
-    case BoolAnd(e1, e2)             => BoolAnd(e1.flatMap(f), e2.flatMap(f))
-    case BoolOr(e1, e2)              => BoolOr(e1.flatMap(f), e2.flatMap(f))
-    case BoolEQ(e1, e2) => BoolEQ(e1.flatMap(f), e2.flatMap(f))
+    case constant: Const              => constant
+    case variable: Variable           => variable
+    case Lambda(label, typ, body)     => Lambda(label, typ.flatMap(f), body.flatMap(f))
+    case Pi(label, typ, body)         => Pi(label, typ.flatMap(f), body.flatMap(f))
+    case Application(function, value) => Application(function.flatMap(f), value.flatMap(f))
+    case Let(label, typ, expr, body)  => Let(label, typ.map(_.flatMap(f)), expr.flatMap(f), body.flatMap(f))
+    case Annot(e1, e2)                => Annot(e1.flatMap(f), e2.flatMap(f))
+    case BoolType                     => BoolType
+    case boolLit: BoolLit             => boolLit
+    case BoolAnd(e1, e2)              => BoolAnd(e1.flatMap(f), e2.flatMap(f))
+    case BoolOr(e1, e2)               => BoolOr(e1.flatMap(f), e2.flatMap(f))
+    case BoolEQ(e1, e2)               => BoolEQ(e1.flatMap(f), e2.flatMap(f))
     case BoolNE(e1, e2) => BoolNE(e1.flatMap(f), e2.flatMap(f))
     case BoolIf(ifPart, thenPart, elsePart) => BoolIf(ifPart.flatMap(f), thenPart.flatMap(f), elsePart.flatMap(f))
     case NaturalType => NaturalType
@@ -134,13 +134,13 @@ sealed trait Expression[+S, +A] extends Product with Serializable {
       }
       case Lambda(domainName, typeExpr, bodyExpr) => Lambda(domainName, shift(typeExpr), withAdjustedIndex(domainName, bodyExpr))
       case Pi(domainName, typeExpr, bodyExpr)     => Pi(domainName, shift(typeExpr), withAdjustedIndex(domainName, bodyExpr))
-      case App(function, value)                   => App(shift(function), shift(value))
+      case Application(function, value)           => Application(shift(function), shift(value))
       case Let(label, typExprOpt, expr, bodyExpr) => Let(label, typExprOpt.map(shift), shift(expr), withAdjustedIndex(label, bodyExpr))
       case Annot(value, typ)                      => Annot(shift(value), shift(typ))
       case BoolType                               => BoolType
       case boolLit: BoolLit                       => boolLit
       case BoolAnd(e1, e2)                        => BoolAnd(shift(e1), shift(e2))
-      case BoolOr(e1, e2) => BoolOr(shift(e1), shift(e2))
+      case BoolOr(e1, e2)                         => BoolOr(shift(e1), shift(e2))
       case BoolEQ(e1, e2) => BoolEQ(shift(e1), shift(e2))
       case BoolNE(e1, e2) => BoolNE(shift(e1), shift(e2))
       case BoolIf(e1, e2, e3) => BoolIf(shift(e1), shift(e2), shift(e3))
@@ -196,7 +196,7 @@ sealed trait Expression[+S, +A] extends Product with Serializable {
       case const: Const                                => const
       case Lambda(label, typExpr, bodyExpr)            => Lambda(label, subst(typExpr), withShift(label, bodyExpr))
       case Pi(label, typeExpr, bodyExpr)               => Pi(label, subst(typeExpr), withShift(label, bodyExpr))
-      case App(function, value)                        => App(subst(function), subst(value))
+      case Application(function, value)                => Application(subst(function), subst(value))
       case Let(label, typExprOpt, valueExpr, bodyExpr) => Let(label, typExprOpt.map(subst), subst(valueExpr), withShift(label, bodyExpr))
       case v: Variable                                 => if(v == variable) by else v
       case Annot(e1, e2)                               => Annot(subst(e1), subst(e2))
@@ -254,62 +254,62 @@ sealed trait Expression[+S, +A] extends Product with Serializable {
       case variable: Variable               => variable
       case Lambda(label, typExpr, bodyExpr) => Lambda(label, typExpr.normalize, bodyExpr.normalize)
       case Pi(label, domain, codomain)      => Pi(label, domain.normalize, codomain.normalize)
-      case App(function, arg)               => {
+      case Application(function, arg)       => {
         function.normalize match {
           // normalize ((\x -> f x) a) => normalize (f a)
           case Lambda(label, typExpr, bodyExpr) => bodyExpr.substitute(Variable(label, 0), arg.shiftVariableIndices(1, Variable(label, 0))).shiftVariableIndices(-1, Variable(label, 0)).normalize
           case normalizedFunction               => (normalizedFunction, arg.normalize) match {
             // normalize (List/build t ((List/fold t) e)) = normalize e
-            case (App(ListBuild, _), App(App(ListFold, _), argument)) => argument.normalize
-            case (App(ListFold, _), App(App(ListBuild, _), argument)) => argument.normalize
-            case (NaturalBuild, App(NaturalFold, argument)) => argument.normalize
-            case (NaturalFold, App(NaturalBuild, argument)) => argument.normalize
+            case (Application(ListBuild, _), Application(Application(ListFold, _), argument)) => argument.normalize
+            case (Application(ListFold, _), Application(Application(ListBuild, _), argument)) => argument.normalize
+            case (NaturalBuild, Application(NaturalFold, argument))                           => argument.normalize
+            case (NaturalFold, Application(NaturalBuild, argument))                           => argument.normalize
             // Natural/fold 2 Natural (+15) 1 = (15 + (15 + 1)) = 31
-            case (App(App(App(NaturalFold, (NaturalLit(n))), t), f), empty) => (1 to n).foldRight(empty)((_, acc) => App(f, acc)).normalize
-            case (NaturalBuild, v) => {
-              val withLabels = App(App(App(v, NaturalType), Variable("Succ", 0)), Variable("Zero", 0)).normalize
+            case (Application(Application(Application(NaturalFold, (NaturalLit(n))), t), f), empty)                       => (1 to n).foldRight(empty)((_, acc) => Application(f, acc)).normalize
+            case (NaturalBuild, v)                                                                                        => {
+              val withLabels = Application(Application(Application(v, NaturalType), Variable("Succ", 0)), Variable("Zero", 0)).normalize
               def normalized(e: Expression[S, A]): Boolean = Try(result(0, e)).toOption.fold[Boolean](false)(_ => true)
               def result(n: Int, e: Expression[S, A]): Int = e match {
-                case App(Variable("Succ", _), next) => result(n + 1, next)
-                case Variable("Zero", _)            => n
-                case _                              => throw CompilerBug.NormalizerBug(s"${this.toString}.normalize")
+                case Application(Variable("Succ", _), next) => result(n + 1, next)
+                case Variable("Zero", _)                    => n
+                case _                                      => throw CompilerBug.NormalizerBug(s"${this.toString}.normalize")
               }
-              if(normalized(withLabels)) NaturalLit(result(0, withLabels)) else App(normalizedFunction, v)
+              if(normalized(withLabels)) NaturalLit(result(0, withLabels)) else Application(normalizedFunction, v)
             }
-            case (NaturalIsZero, (NaturalLit(n))) => BoolLit(n == 0)
-            case (NaturalEven, (NaturalLit(n))) => BoolLit(n % 2 == 0)
-            case (NaturalOdd, (NaturalLit(n))) => BoolLit(n % 2 != 0)
-            case (App(ListBuild, t), v) => {
+            case (NaturalIsZero, (NaturalLit(n)))                                                                         => BoolLit(n == 0)
+            case (NaturalEven, (NaturalLit(n)))                                                                           => BoolLit(n % 2 == 0)
+            case (NaturalOdd, (NaturalLit(n)))                                                                            => BoolLit(n % 2 != 0)
+            case (Application(ListBuild, t), v)                                                                           => {
               // We first label the church encoded list using "Cons" and "Nil" variables
-              val withLabels = App(App(App(v, App(ListType, t)), Variable("Cons", 0)), Variable("Nil", 0)).normalize
+              val withLabels = Application(Application(Application(v, Application(ListType, t)), Variable("Cons", 0)), Variable("Nil", 0)).normalize
               def normalized(e: Expression[S, A]): Boolean = Try(result(Nil, e)).toOption.fold[Boolean](false)(_ => true)
               // we fold over the labeled church encoded list and create a Scala List
               def result[Tag, V](acc: List[Expression[Tag, V]], e: Expression[Tag, V]): List[Expression[Tag, V]] = e match {
-                case App(App(Variable("Cons", _), h), next) => result(h :: acc, next)
-                case Variable("Nil", _)                     => acc
-                case _                                      => throw CompilerBug.NormalizerBug(s"${this.toString}.normalize")
+                case Application(Application(Variable("Cons", _), h), next) => result(h :: acc, next)
+                case Variable("Nil", _)                                     => acc
+                case _                                                      => throw CompilerBug.NormalizerBug(s"${this.toString}.normalize")
               }
-              if(normalized(withLabels)) ListLit(Some(t), result(Nil, withLabels)) else App(normalizedFunction, v)
+              if(normalized(withLabels)) ListLit(Some(t), result(Nil, withLabels)) else Application(normalizedFunction, v)
             }
-            case (App(App(App(ListFold, t), ListLit(_, ls)), f), seed) => ls.foldRight(seed)((e, acc) => App(App(f, e), acc)).normalize
-            case (App(ListLength, _), ListLit(_, ls)) => NaturalLit(ls.size)
-            case (App(ListHead, t), ListLit(_, ls)) => OptionalLit(t, ls.headOption.toList).normalize
-            case (App(ListLast, t), ListLit(_, ls)) => OptionalLit(t, ls.lastOption.toList).normalize
-            case (App(ListIndexed, t), ListLit(_, ls)) => {
+            case (Application(Application(Application(ListFold, t), ListLit(_, ls)), f), seed)                            => ls.foldRight(seed)((e, acc) => Application(Application(f, e), acc)).normalize
+            case (Application(ListLength, _), ListLit(_, ls))                                                             => NaturalLit(ls.size)
+            case (Application(ListHead, t), ListLit(_, ls))                                                               => OptionalLit(t, ls.headOption.toList).normalize
+            case (Application(ListLast, t), ListLit(_, ls))                                                               => OptionalLit(t, ls.lastOption.toList).normalize
+            case (Application(ListIndexed, t), ListLit(_, ls))                                                            => {
               val typ = Record(Map("index" -> NaturalType, "value" -> t))
               ListLit(Some(typ), ls.zipWithIndex.map{ case (v, i) => RecordLit(Map("index" -> NaturalLit(i), "value" -> v))}).normalize
             }
-            case (App(ListReverse, t), ListLit(_, ls)) => ListLit(Some(t), ls.reverse).normalize
-            case (App(App(App(App(OptionalFold, t), OptionalLit(_, ls)), _), some), none) => ls.headOption.fold(none)(App(some, _)).normalize
-            case (n, v) => App(n, v)
+            case (Application(ListReverse, t), ListLit(_, ls))                                                            => ListLit(Some(t), ls.reverse).normalize
+            case (Application(Application(Application(Application(OptionalFold, t), OptionalLit(_, ls)), _), some), none) => ls.headOption.fold(none)(Application(some, _)).normalize
+            case (n, v)                                                                                                   => Application(n, v)
           }
         }
       }
-      case Let(binding, _, expr, body)    => body.substitute(Variable(binding, 0), expr.shiftVariableIndices(1, Variable(binding, 0))).shiftVariableIndices(-1, Variable(binding, 0)).normalize
-      case Annot(e1, _)                   => e1.normalize
-      case BoolType                       => BoolType
-      case BoolLit(b)                     => BoolLit(b)
-      case BoolAnd(e1, e2)                => (e1.normalize, e2.normalize) match {
+      case Let(binding, _, expr, body)      => body.substitute(Variable(binding, 0), expr.shiftVariableIndices(1, Variable(binding, 0))).shiftVariableIndices(-1, Variable(binding, 0)).normalize
+      case Annot(e1, _)                     => e1.normalize
+      case BoolType                         => BoolType
+      case BoolLit(b)                       => BoolLit(b)
+      case BoolAnd(e1, e2)                  => (e1.normalize, e2.normalize) match {
         case (BoolLit(l1), BoolLit(l2)) => BoolLit(l1 && l2)
         case (x, y) => BoolAnd(x, y)
       }
@@ -382,7 +382,7 @@ sealed trait Expression[+S, +A] extends Product with Serializable {
         val e2Normalized = e2.normalize
         (e1Normalized, e2Normalized) match {
           case (RecordLit(mapping), UnionLit(ks, vs, _)) => {
-            mapping.get(ks).fold[Expression[T, A]](Merge(e1Normalized, e2Normalized, e3.normalize))(r => App(r, vs).normalize)
+            mapping.get(ks).fold[Expression[T, A]](Merge(e1Normalized, e2Normalized, e3.normalize))(r => Application(r, vs).normalize)
           }
           case (x, y) => Merge(x, y, e3.normalize)
         }
@@ -433,7 +433,12 @@ object Expression extends ExpressionInstances {
   //   Pi(x, A, B)
   case class Pi[+S, +A](domainLabel: String, domain: Expression[S, A], codomain: Expression[S, A]) extends Expression[S, A]
 
-  case class App[+S, +A](function: Expression[S, A], value: Expression[S, A]) extends Expression[S, A]
+  // Syntax:
+  //   f a
+  // translates to:
+  //   Application(f, a)
+  case class Application[+S, +A](function: Expression[S, A], value: Expression[S, A]) extends Expression[S, A]
+
   case class Let[+S, +A](label: String, typ: Option[Expression[S, A]], expr: Expression[S, A], body: Expression[S, A]) extends Expression[S, A]
   case class Annot[+S, +A](e1: Expression[S, A], e2: Expression[S, A]) extends Expression[S, A]
 

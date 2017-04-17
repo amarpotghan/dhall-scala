@@ -106,14 +106,14 @@ class ExpressionSpec extends Specification {
       "Combine" >> {
         val innerRecord1 = RecordLit(Map("y1" -> NaturalPlus(Variable("x", 0), NaturalLit(1))))
         val innerRecord2 = RecordLit(Map("y2" -> NaturalTimes(Variable("x", 0), NaturalLit(2))))
-        val expr1 = App(Lambda("x", NaturalType, RecordLit(Map("x" -> Variable("x", 0), "y" -> innerRecord1))), NaturalLit(1))
-        val expr2 = App(Lambda("x", NaturalType, RecordLit(Map("z" -> Variable("x", 0), "y" -> innerRecord2))), NaturalLit(2))
+        val expr1 = Application(Lambda("x", NaturalType, RecordLit(Map("x" -> Variable("x", 0), "y" -> innerRecord1))), NaturalLit(1))
+        val expr2 = Application(Lambda("x", NaturalType, RecordLit(Map("z" -> Variable("x", 0), "y" -> innerRecord2))), NaturalLit(2))
         val combined = Combine(expr1, expr2).normalize
         combined mustEqual RecordLit(Map("y" -> RecordLit(Map("y1" -> NaturalLit(2), "y2" -> NaturalLit(4))), "x" -> NaturalLit(1), "z" -> NaturalLit(2)))
       }
 
       "Merge" >> {
-        val functions = RecordLit(Map("Left" -> Lambda("y", NaturalType, App(NaturalIsZero, Variable("y", 0))),
+        val functions = RecordLit(Map("Left" -> Lambda("y", NaturalType, Application(NaturalIsZero, Variable("y", 0))),
                                       "Right" -> Lambda("x", BoolType, Let("x", Some(BoolType), BoolLit(true), BoolAnd(Variable("x", 0), BoolLit(true))))))
 
         val union1 = UnionLit("Left", NaturalLit(0), Map("Right" -> BoolType))
@@ -132,31 +132,31 @@ class ExpressionSpec extends Specification {
         Field(record, nonExisting).normalize mustEqual Field(record, nonExisting)
       }
 
-      "App " >> {
+      "Application" >> {
         "Lamda" >> {
-          App(Lambda("x", NaturalType, NaturalTimes(Variable("x", 0), Variable("x", 0))), NaturalLit(2)).normalize mustEqual NaturalLit(4)
+          Application(Lambda("x", NaturalType, NaturalTimes(Variable("x", 0), Variable("x", 0))), NaturalLit(2)).normalize mustEqual NaturalLit(4)
         }
 
         "ListBuild" >> {
           val ls =
-            App(
-              App(ListBuild, NaturalType),
+            Application(
+              Application(ListBuild, NaturalType),
               Lambda("l", Const.Type,
                   Lambda("cons",
                       Pi("_", NaturalType,
                             Pi("_", Variable("l", 0), Variable("l", 0))),
                       Lambda("nil", Variable("l", 0),
-                          App(App(Variable("cons", 0), NaturalLit(1)), Variable("nil", 0))))))
+                          Application(Application(Variable("cons", 0), NaturalLit(1)), Variable("nil", 0))))))
 
           ls.normalize mustEqual ListLit(Some(NaturalType), Seq(NaturalLit(1)))
         }
 
         "ListFold" >> {
           val fold =
-            App(
-              App(
-                App(
-                  App(ListFold, NaturalType),
+            Application(
+              Application(
+                Application(
+                  Application(ListFold, NaturalType),
                   ListLit(Some(NaturalType), Seq(1, 2, 3, 4).map(NaturalLit(_)))),
                 Lambda("x", NaturalType, Lambda("y", NaturalType, NaturalPlus(Variable("x", 0), Variable("y", 0))))),
               NaturalLit(0)).normalize
@@ -165,27 +165,27 @@ class ExpressionSpec extends Specification {
         }
 
         "ListReverse" >> {
-          val reverseExpr = App(App(ListReverse, NaturalType), ListLit(None, Seq(1, 2, 3).map(NaturalLit(_))))
+          val reverseExpr = Application(Application(ListReverse, NaturalType), ListLit(None, Seq(1, 2, 3).map(NaturalLit(_))))
           reverseExpr.normalize mustEqual ListLit(Some(NaturalType), Seq(3, 2, 1).map(NaturalLit(_)))
         }
 
         "ListHead" >> {
-          val headExpr = App(App(ListHead, NaturalType), ListLit(None, Seq(1, 2).map(NaturalLit(_))))
+          val headExpr = Application(Application(ListHead, NaturalType), ListLit(None, Seq(1, 2).map(NaturalLit(_))))
           headExpr.normalize mustEqual OptionalLit(NaturalType, Seq(NaturalLit(1)))
         }
 
         "ListLast" >> {
-          val lastExpr = App(App(ListLast, NaturalType), ListLit(None, Seq(1, 2).map(NaturalLit(_))))
+          val lastExpr = Application(Application(ListLast, NaturalType), ListLit(None, Seq(1, 2).map(NaturalLit(_))))
           lastExpr.normalize mustEqual OptionalLit(NaturalType, Seq(NaturalLit(2)))
         }
 
         "ListLength" >> {
-          val lengthExpr = App(App(ListLength, NaturalType), ListLit(None, Seq(1, 2).map(NaturalLit(_))))
+          val lengthExpr = Application(Application(ListLength, NaturalType), ListLit(None, Seq(1, 2).map(NaturalLit(_))))
           lengthExpr.normalize mustEqual NaturalLit(2)
         }
 
         "ListIndexed" >> {
-          val lengthExpr = App(App(ListIndexed, NaturalType), ListLit(None, Seq(1, 2).map(NaturalLit(_))))
+          val lengthExpr = Application(Application(ListIndexed, NaturalType), ListLit(None, Seq(1, 2).map(NaturalLit(_))))
           val record = Record(Map("index" -> NaturalType, "value" -> NaturalType))
           val expected = ListLit(
             Some(record),
@@ -196,10 +196,10 @@ class ExpressionSpec extends Specification {
 
         "NaturalFold" >> {
           val fold =
-            App(
-              App(
-                App(
-                  App(NaturalFold, NaturalLit(2)),
+            Application(
+              Application(
+                Application(
+                  Application(NaturalFold, NaturalLit(2)),
                   NaturalType),
                 Lambda("x", NaturalType,
                     NaturalPlus(Variable("x", 0), NaturalLit(15)))), NaturalLit(1))
@@ -207,35 +207,35 @@ class ExpressionSpec extends Specification {
         }
 
         "NaturalBuild" >> {
-          val ls = App(NaturalBuild,
+          val ls = Application(NaturalBuild,
                        Lambda("natural", Const.Type,
                            Lambda("succ", Pi("_", Variable("natural", 0), Variable("natural", 0)),
                                Lambda("zero", Variable("natural", 0),
-                                   App(Variable("succ", 0), App(Variable("succ", 0), App(Variable("succ", 0), App(Variable("succ", 0), Variable("zero", 0)))))))))
+                                   Application(Variable("succ", 0), Application(Variable("succ", 0), Application(Variable("succ", 0), Application(Variable("succ", 0), Variable("zero", 0)))))))))
 
           ls.normalize mustEqual NaturalLit(4)
         }
 
         "NaturalIsZero" >> {
-          App(NaturalIsZero, NaturalLit(0)).normalize mustEqual BoolLit(true)
-          App(NaturalIsZero, NaturalLit(1)).normalize mustEqual BoolLit(false)
+          Application(NaturalIsZero, NaturalLit(0)).normalize mustEqual BoolLit(true)
+          Application(NaturalIsZero, NaturalLit(1)).normalize mustEqual BoolLit(false)
         }
         "NaturalEven" >> {
-          App(NaturalEven, NaturalLit(2)).normalize mustEqual BoolLit(true)
-          App(NaturalEven, NaturalLit(3)).normalize mustEqual BoolLit(false)
+          Application(NaturalEven, NaturalLit(2)).normalize mustEqual BoolLit(true)
+          Application(NaturalEven, NaturalLit(3)).normalize mustEqual BoolLit(false)
         }
         "NaturalOdd" >> {
-          App(NaturalOdd, NaturalLit(2)).normalize mustEqual BoolLit(false)
-          App(NaturalOdd, NaturalLit(3)).normalize mustEqual BoolLit(true)
+          Application(NaturalOdd, NaturalLit(2)).normalize mustEqual BoolLit(false)
+          Application(NaturalOdd, NaturalLit(3)).normalize mustEqual BoolLit(true)
         }
 
         "OptionalFold" >> {
           def foldApplication(value: Seq[Expression[String, Int]]) =
-            App(
-              App(
-                App(
-                  App(
-                    App(OptionalFold, NaturalType),
+            Application(
+              Application(
+                Application(
+                  Application(
+                    Application(OptionalFold, NaturalType),
                     OptionalLit(NaturalType, value)),
                   NaturalType),
                 Lambda("x", NaturalType, Variable("x", 0))),
