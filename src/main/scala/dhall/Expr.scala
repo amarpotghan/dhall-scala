@@ -1,7 +1,6 @@
 package dhall
 
-import cats.Monad
-import cats.functor.Bifunctor
+import cats.{Bifunctor, Monad}
 import scala.util.Try
 
 import dhall.utilities.TypeLevelFunctions.Partial2
